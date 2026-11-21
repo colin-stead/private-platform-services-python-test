@@ -1,7 +1,10 @@
 """
 Rewards handler test files.
 """
+import requests
 
-#TODO: Implement tests, just ensuring pytest is working for now
-def test_assertions():
-    assert True == True
+BASE_URL = "http://localhost:7050"
+
+def test_get_rewards():
+    response = requests.get(f"{BASE_URL}/rewards")
+    assert response.status_code == 200
