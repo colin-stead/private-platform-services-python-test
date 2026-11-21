@@ -38,12 +38,12 @@ def _validate_customers_request(data):
         validation_errors["message"] = "Invalid email."
         validation_errors["errors"] = {"email": ["The given email is invalid."]}
 
-    # Format the order total to make sure it's a valid monetary value. Only 2 decimal places.
-    formatted_order_total = f"{data['orderTotal']:.2f}"
+    # Format the order total to make sure it's a valid monetary value. Only 2 decimal places, round down any trailing decimals.
+    total_to_format = (math.floor(data['orderTotal'] * 100) / 100)
+    formatted_order_total = f"{total_to_format:.2f}"
     
-    # Validate orderTotal, update message + errors array if invalid
-    # Using >= because then we know there's more decimals. This will allow for .00 or no decimal to be passed
-    if len(str(data["orderTotal"])) >= len(formatted_order_total):
+    # Validate orderTotal, update message + errors array if invalid. Passed value should be same length as formatted.
+    if len(str(data["orderTotal"])) > len(formatted_order_total):
         if "message" in validation_errors.keys():
             validation_errors["message"] += " and 1 more."
         else:
