@@ -44,7 +44,9 @@ Create RESTful endpoint(s) to calculate, store, and retrieve customer rewards da
 
 # Solution
 
-Setup stays the same with `validators 0.35.0` added to the [requirements.txt](requirements.txt) file for customer email validation without a need for regex. In a real setting this could be used for initial validation but ultimately a confirmation email would need to be sent to the user to validate the email.
+Setup stays the same with the following additions to [requirements.txt](requirements.txt)
+* `validators 0.35.0` for customer email validation without a need for regex. In a real setting this could be used for initial validation but ultimately a confirmation email would need to be sent to the user to validate the email.
+* `requests 2.34.2` for hitting endpoints in pytest.
 
 # Endpoints
 * `POST /customers`
