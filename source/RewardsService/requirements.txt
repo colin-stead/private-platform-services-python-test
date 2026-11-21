@@ -1,5 +1,6 @@
 motor==3.7.0
 pymongo==4.11.3
-tornado==6.1.0
 pytest==9.2.0
+requests==2.34.2
+tornado==6.5.10
 validators==0.35.0
