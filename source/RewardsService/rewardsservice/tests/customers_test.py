@@ -2,12 +2,51 @@
 Customers handler test files.
 """
 import requests
+from models.customers import Customer
 
 MAXIMUM_POINTS = 1000
 
 def test_get_customers(base_url):
     response = requests.get(f"{base_url}/customers")
     assert response.status_code == 200
+
+def test_we_can_find_customer_with_email(base_url, db):
+    """
+    Test GET /customers/{customer_email} endpoint
+
+    - The status code should be 200 (OK)
+    - The response should match data for the customer in the db
+    """
+    payload = {"email": "tester@gamil.com", "orderTotal": 234}
+
+    # Create a B Tier customer, nextRewardTier will be C    
+    customer = Customer()
+    customer = customer.save({"email": "tester@gamil.com", "orderTotal": 234})
+
+    response = requests.get(f"{base_url}/customers/{payload['email']}")
+    response_body = response.json()
+
+    # Assert the response body matches what is pulled from the DB
+    assert response.status_code == 200
+    assert response_body["rewardPoints"] == payload["orderTotal"]
+    assert response_body["rewardTier"] == "B"
+    assert response_body["rewardTierName"] == "10% off purchase"
+    assert response_body["nextRewardTier"] == "C"
+
+def test_we_404_when_email_is_not_in_the_database(base_url, db):
+    """
+    Test GET /customers/{customer_email} endpoint
+
+    - The status code should be 200 (OK)
+    - The response should match data for the customer in the db
+    """
+    response = requests.get(f"{base_url}/customers/tester@gamil.com")
+    response_body = response.json()
+
+    # Assert the response body matches what is pulled from the DB
+    assert response.status_code == 404
+    assert response_body["error"] == "404 Not Found"
+    assert response_body["message"] == "Customer not found"
 
 def test_create_customer_with_order_total_less_than_100(base_url, db):
     """
