@@ -98,6 +98,3 @@ Added the POST endpoint for the Customer Rewards module.
 * Adds `_validate_customers_request` private function to `customers_handler.py` so we can validate request data, passes along validated data if it's clean. Sends errors back for 422 response if not.
 *Adds `_build_customer_rewards` private function to `customers_handler.py` to apply calculations to validated request data for updating/creating new customers
 * Implements `POST /customers` to create new customers or update customers that may have existed before.
-
-
-
