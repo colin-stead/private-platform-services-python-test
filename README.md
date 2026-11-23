@@ -19,3 +19,83 @@
 # Dependencies
 ### Docker
 * Install [Rancher Desktop](https://rancherdesktop.io/) 
+
+# Solution
+
+Setup stays the same with the following packages added to [requirements.txt](requirements.txt)
+* `validators 0.35.0` for customer email validation without a need for regex. In a real setting this could be used for initial validation but ultimately a confirmation email would need to be sent to the user to validate the email.
+* `pytest 9.2.0` for unit testing
+
+# Endpoints
+* `POST /customers`
+    * Creates a new customer in the Rewards DB under the customers collection. Updates the Customer if the Customer already exists.
+    * Response Codes 201, 409, and 422
+    * Example 201 Response:
+        ```
+        {
+            "email": "test.customer@urbn.com",
+            "orderTotal": 103.78,
+            "rewardPoints": 103,
+            "rewardTier": "A",
+            "rewardTierName": "5% off purchase",
+            "nextRewardTier": "B",
+            "nextRewardTierProgress": 0.97
+        }
+        ```
+    * Example 409 Response:
+        ```
+        {
+            "message": "Cannot create Customer. Customer with email: colin@gmail.com already exists.",
+            "meta": {
+                "message": "Use the PUT method to update the Customer's rewards.",
+                "method": "PUT",
+                "url": "/customers/colin@gmail.com"
+            }
+        }
+        ```
+     * Example 422 Response:
+        ```
+        {
+            "message": "Invalid email. and 1 more.",
+            "errors": {
+                "email": [
+                    "The given email is invalid."
+                ],
+                "orders": [
+                    "The monetary value is invalid. Round to nearest cent."
+                ]
+            }
+        }
+        ```
+
+* `GET /customers`
+    * Gets a list of all the customers that are in the database.
+    * Response Codes 200
+    * Example 200 Response:
+        ```
+        [
+            {
+                "email": "jackie@gmail.com",
+                "nextRewardTier": null,
+                "nextRewardTierProgress": 0.99,
+                "rewardPoints": 1000,
+                "rewardTier": "J",
+                "rewardTierName": "50% off purchase"
+            },
+            {
+                "email": "colin@gmail.com",
+                "nextRewardTier": "B",
+                "nextRewardTierProgress": 0.13,
+                "rewardPoints": 113,
+                "rewardTier": "A",
+                "rewardTierName": "5% off purchase"
+            }
+        ]
+        ```
+* `GET /customers/{customer_email}`
+* `PUT /customers/{customer_email}`
+
+# Assumptions & Tradeoffs
+* On the "Create Customer" endpoint `POST /customers` I assumed we wouldn't want duplicate customers with the same IDs. So I added a 409 response and another endpoint to update customer rewards `PUT /customers/{customer_email}`. This follows best practices in API design.
+* I assumed "No more rewards can be earned" also meant there's a cap to reward points a customer can earn. So for this project, once a customer hits the "J Tier", they can no longer earn more points and are capped at 1000. The POST/PUT endpoints will still return 200 OK responses but the rewards data will not change.
+* On the "Get Customer Details" endpoint `GET /customers/{customer_email}` I'm not a fan of passing an email directly to the URL. In a production setting I'd opt for an ID key.

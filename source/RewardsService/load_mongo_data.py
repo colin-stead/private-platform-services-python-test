@@ -20,5 +20,7 @@ def main():
     db.rewards.insert_one({"points": 1000, "rewardName": "50% off purchase", "tier": "J"})
     print("Rewards loaded in mongo")
 
+    db.customers.drop()
+
 if __name__ == "__main__":
     main()
