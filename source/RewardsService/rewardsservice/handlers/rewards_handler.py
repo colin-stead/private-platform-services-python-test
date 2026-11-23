@@ -1,9 +1,10 @@
 import json
 
-from pymongo import MongoClient
+import database
+
 from .base_handler import BaseHandler
 
-DB = BaseHandler.CLIENT["Rewards"]
+DB = database.get_db()
 
 class RewardsHandler(BaseHandler):
 

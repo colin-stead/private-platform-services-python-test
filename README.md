@@ -22,13 +22,52 @@
 
 # Solution
 
-Setup stays the same with `validators 0.35.0` added to the [requirements.txt](requirements.txt) file for customer email validation without a need for regex. In a real setting this could be used for initial validation but ultimately a confirmation email would need to be sent to the user to validate the email.
+Setup stays the same with the following packages added to [requirements.txt](requirements.txt)
+* `validators 0.35.0` for customer email validation without a need for regex. In a real setting this could be used for initial validation but ultimately a confirmation email would need to be sent to the user to validate the email.
+* `pytest 9.2.0` for unit testing.
+* `requests 2.34.2` for hitting endpoints in pytest.
+
+I also upgraded tornado to 6.5.10.
+
+# Testing
+Tests run with `pytest` on your machine (not inside docker) against a separate **`Tests`** MongoDB database, so the `Rewards` database used by the service on `http://localhost:7050` is never touched. `conftest.py` starts its own copy of the service on **port 7051** that is pointed at the `Tests` database.
+
+### Prerequisites
+* The MongoDB container is running with port `27017` published: `cd source/RewardsService && docker-compose up -d`. The service on port 7050 does not need to be running for the tests.
+* A Python virtual environment with the pinned dependencies (an older tornado raises a `DeprecationWarning` on Python 3.14):
+    ```
+    python -m venv .venv
+    source .venv/bin/activate
+    pip install -r source/RewardsService/requirements.txt
+    ```
+* Port `7051` is free.
+
+### Run the tests
+```
+cd source/RewardsService
+pytest rewardsservice/tests -v
+```
+
+### What the tests do
+* The `rewards` collection in the `Tests` database is reloaded with the same data as `load_mongo_data.py` at the start of each run.
+* The `customers` collection is emptied before and after every test, and dropped when the run finishes, so tests never see data from other tests or earlier runs. The `rewards` collection stays in the `Tests` database.
+
+### Configuration
+Database settings are environment variables read in `source/RewardsService/database.py`:
+
+| Variable | Default | Under pytest |
+| --- | --- | --- |
+| `MONGO_HOST` | `mongodb` (docker compose service name) | `localhost` (override if Mongo is elsewhere) |
+| `MONGO_PORT` | `27017` | `27017` |
+| `DB_NAME` | `Rewards` | `Tests` (always) |
+
+If you have more than one container engine installed (for example Rancher Desktop and Docker Desktop), make sure the MongoDB that owns host port `27017` is the one you expect.
 
 # Endpoints
 * `POST /customers`
     * Creates a new customer in the Rewards DB under the customers collection. Updates the Customer if the Customer already exists.
-    * Response Codes 200, 201, and 422
-    * Example 201/200 Response body:
+    * Response Codes 201, 409, and 422
+    * Example 201 Response:
         ```
         {
             "email": "test.customer@urbn.com",
@@ -40,39 +79,60 @@ Setup stays the same with `validators 0.35.0` added to the [requirements.txt](re
             "nextRewardTierProgress": 0.97
         }
         ```
+    * Example 409 Response:
+        ```
+        {
+            "message": "Cannot create Customer. Customer with email: colin@urbn.com already exists.",
+            "meta": {
+                "message": "Use the PUT method to update the Customer's rewards.",
+                "method": "PUT",
+                "url": "/customers/colin@urbn.com"
+            }
+        }
+        ```
+     * Example 422 Response:
+        ```
+        {
+            "message": "Invalid email. and 1 more.",
+            "errors": {
+                "email": [
+                    "The given email is invalid."
+                ],
+                "orders": [
+                    "The monetary value is invalid. Round to nearest cent."
+                ]
+            }
+        }
+        ```
 
 * `GET /customers`
+    * Gets a list of all the customers that are in the database.
+    * Response Codes 200
+    * Example 200 Response:
+        ```
+        [
+            {
+                "email": "jackie@urbn.com",
+                "nextRewardTier": null,
+                "nextRewardTierProgress": 0.99,
+                "rewardPoints": 1000,
+                "rewardTier": "J",
+                "rewardTierName": "50% off purchase"
+            },
+            {
+                "email": "colin@urbn.com",
+                "nextRewardTier": "B",
+                "nextRewardTierProgress": 0.13,
+                "rewardPoints": 113,
+                "rewardTier": "A",
+                "rewardTierName": "5% off purchase"
+            }
+        ]
+        ```
 * `GET /customers/{customer_email}`
+* `PUT /customers/{customer_email}`
 
 # Assumptions & Tradeoffs
-* On the "Create Customer" endpoint `POST /customers` I assumed we wouldn't want duplicate customers with the same IDs. Instead of adding another PUT/PATCH route and requiring the call to come from there I opted to simply update an existing customer when found.
-* I assumed "No more rewards can be earned" also meant there's a cap to reward points a customer can earn. So for this project, once a customer hits the "J Tier", they can no longer earn more points and are capped at 1000.
+* On the "Create Customer" endpoint `POST /customers` I assumed we wouldn't want duplicate customers with the same IDs. So I added a 409 response and another endpoint to update customer rewards `PUT /customers/{customer_email}`. This follows best practices in API design.
+* I assumed "No more rewards can be earned" also meant there's a cap to reward points a customer can earn. So for this project, once a customer hits the "J Tier", they can no longer earn more points and are capped at 1000. The POST/PUT endpoints will still return 200 OK responses but the rewards data will not change.
 * On the "Get Customer Details" endpoint `GET /customers/{customer_email}` I'm not a fan of passing an email directly to the URL. In a production setting I'd opt for an ID key.
-
-# History Note
-
-While working on this project I noticed the original repository was public. To keep my answers private I moved to a private repository. This was after I spun up the application and created the following endpoints:
-* `POST /customers`
-* `GET /customers`
-
-Here's the corresponding branches and their PR Messages:
-
-BRANCH: story/1-initialize ([PUBLIC PR LINK](https://github.com/colin-stead/platform-services-python-test/pull/5))
-PR DESCRIPTION:
-* Spin up the tornado server
-* Familiarize self with codebase
-* Add TODOs, Update .gitignore
-* Add Pytest
-* Add a BaseHandler to build off of so the headers come through as JSON instead of HTML project wide
-* Add customers url pattern
-* Add customer_handler for customer routes to be added
-
-BRANCH: feature/2-post-customer-rewards ([PUBLIC PR LINK](https://github.com/colin-stead/platform-services-python-test/pull/6))
-PR DESCRIPTION:
-Added the POST endpoint for the Customer Rewards module.
-
-* Adds `validators 0.35.0` to `requirements.txt` for initial email validation.
-* Adds some updates to the README regarding my solution.
-* Adds `_validate_customers_request` private function to `customers_handler.py` so we can validate request data, passes along validated data if it's clean. Sends errors back for 422 response if not.
-*Adds `_build_customer_rewards` private function to `customers_handler.py` to apply calculations to validated request data for updating/creating new customers
-* Implements `POST /customers` to create new customers or update customers that may have existed before.
