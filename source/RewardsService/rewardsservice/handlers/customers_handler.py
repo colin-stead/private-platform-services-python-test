@@ -116,7 +116,7 @@ class CustomersHandler(BaseHandler):
 
     async def post(self, _):
         """
-        Create or update a customer with customer rewards. Upsert the data into the db.
+        Create a customer with customer rewards.
 
         Endpoint:
             POST /customers
