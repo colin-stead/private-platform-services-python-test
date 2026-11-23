@@ -8,10 +8,10 @@ POST /customers
 import math
 import pymongo
 
-from pymongo import MongoClient
-from pymongo.client_session import ClientSession
+import database
 
-DB = "Rewards"
+from pymongo import MongoClient
+
 CUSTOMER_COLLECTION = "customers"
 REWARDS_COLLECTION = "rewards"
 MINIMUM_REWARDS = 100
@@ -22,9 +22,9 @@ class Customer:
     A model to represent a Customer document
     """
 
-    def __init__(self, client: MongoClient):
-        self._client = client
-        self._db = self._client["Rewards"]
+    def __init__(self):
+        self._client = database.get_client()
+        self._db = database.get_db()
 
         self._collection = self._db.get_collection(CUSTOMER_COLLECTION)
         self._collection.create_index("email", unique=True) # Faster lookups on email, email must be unique
