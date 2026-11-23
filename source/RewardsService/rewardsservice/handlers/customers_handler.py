@@ -137,6 +137,7 @@ class CustomersHandler(BaseHandler):
                 if customer == None:
                     self.set_status(404)
                     self.write({
+                        "error": "404 Not Found",
                         "message": "Customer not found"
                     })
                     return
