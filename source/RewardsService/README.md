@@ -49,6 +49,42 @@ Setup stays the same with the following packages added to [requirements.txt](req
 * `pytest 9.2.0` for unit testing.
 * `requests 2.34.2` for hitting endpoints in pytest.
 
+I also upgraded tornado to 6.5.10.
+
+# Testing
+Tests run with `pytest` on your machine (not inside docker) against a separate **`Tests`** MongoDB database, so the `Rewards` database used by the service on `http://localhost:7050` is never touched. `conftest.py` starts its own copy of the service on **port 7051** that is pointed at the `Tests` database.
+
+### Prerequisites
+* The MongoDB container is running with port `27017` published: `cd source/RewardsService && docker-compose up -d`. The service on port 7050 does not need to be running for the tests.
+* A Python virtual environment with the pinned dependencies (an older tornado raises a `DeprecationWarning` on Python 3.14):
+    ```
+    python -m venv .venv
+    source .venv/bin/activate
+    pip install -r source/RewardsService/requirements.txt
+    ```
+* Port `7051` is free.
+
+### Run the tests
+```
+cd source/RewardsService
+pytest rewardsservice/tests -v
+```
+
+### What the tests do
+* The `rewards` collection in the `Tests` database is reloaded with the same data as `load_mongo_data.py` at the start of each run.
+* The `customers` collection is emptied before and after every test, and dropped when the run finishes, so tests never see data from other tests or earlier runs. The `rewards` collection stays in the `Tests` database.
+
+### Configuration
+Database settings are environment variables read in `source/RewardsService/database.py`:
+
+| Variable | Default | Under pytest |
+| --- | --- | --- |
+| `MONGO_HOST` | `mongodb` (docker compose service name) | `localhost` (override if Mongo is elsewhere) |
+| `MONGO_PORT` | `27017` | `27017` |
+| `DB_NAME` | `Rewards` | `Tests` (always) |
+
+If you have more than one container engine installed (for example Rancher Desktop and Docker Desktop), make sure the MongoDB that owns host port `27017` is the one you expect.
+
 # Endpoints
 * `POST /customers`
     * Creates a new customer in the Rewards DB under the customers collection. Updates the Customer if the Customer already exists.
