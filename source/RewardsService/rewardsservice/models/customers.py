@@ -112,3 +112,15 @@ class Customer:
             )
 
         return rewards
+
+    def find(self, email):
+        """
+        Find a customer in the DB
+
+        Parameters:
+            email (string): The email we are looking for
+        
+        Returns:
+            Any | None: The Customer document or Nothing
+        """
+        return self._collection.find_one({"email": email}, {"_id": 0})

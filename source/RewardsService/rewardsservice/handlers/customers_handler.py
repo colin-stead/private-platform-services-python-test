@@ -117,7 +117,18 @@ class CustomersHandler(BaseHandler):
                 self.write(json.dumps(customers, indent=4))
             else:
                 # Implement email logic here, for now return first where email is email
-                self.write({})
+                customer = Customer()
+                customer = customer.find(email)
+
+                if customer == None:
+                    self.set_status(404)
+                    self.write({
+                        "error": "404 Not Found",
+                        "message": "Customer not found"
+                    })
+                    return
+
+                self.write(json.dumps(customer, indent=4))
         except (errors.CollectionInvalid, TypeError):
             # Return an empty json response if nothing's been created yet
             self.write({})
