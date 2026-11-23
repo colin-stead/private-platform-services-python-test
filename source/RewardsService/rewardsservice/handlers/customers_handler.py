@@ -105,6 +105,14 @@ class CustomersHandler(BaseHandler):
         # Send json of customers if they're in the db, otherwise empty 200 response
         try:
             if not email:
+                arguments = self.request.query_arguments
+                pagination_fields = {
+                    'sort': arguments["sort"] if "sort" in arguments.keys() else "_id",
+                    'count': arguments["perPage"] if "perPage" in arguments.keys() else 10
+                }
+
+                arguments = {key: value for key, value in self.request.arguments.items() if key not in pagination_fields.keys()}
+
                 customers = list(DB.customers.find({}, {"_id": 0}))
                 self.write(json.dumps(customers, indent=4))
             else:
