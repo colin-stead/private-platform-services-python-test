@@ -1,0 +1,581 @@
+
+❯ <ide_selection>The user selected the lines 23 to 23 from
+  /Users/colinstead/Projects/urbn/platform-services-python-test/source/RewardsS
+  ervice/rewardsservice/tests/customers_test.py:
+  test_create_customer_with_order_total_less_than_100
+
+  This may or may not be related to the current task.</ide_selection>
+
+❯ I need to configure a testing environment for my workspace. The testing
+  environment will be a separate database in MongoDB from the DB that is used
+  against the localhost:7050 server. The DB is on a docker container.
+
+  If you look at @source/RewardsService/rewardsservice/handlers/base_handler.py
+   you will see that the DB configuration is done there so customers_handler
+  and rewards_handler know which DB to communicate with. I'd like to move this
+  to variables in os.environ from database.py. This way the tests/ folder will
+  be able to change to the "Tests" DB from the "Rewards" DB and have the
+  endpoints alter data in the "Tests" DB when pytest runs.
+
+  The "Tests" DB should be populated with the same rewards data in
+  @source/RewardsService/load_mongo_data.py  we can leave this in the "Tests"
+  db, however the customers collection should be dropped at the end of each
+  test run so it's empty whenever the tests occur. This way we will not see
+  unexpected responses with the test data we hit the endpoints with.
+
+  Help me update the database setup and references and get the tests working
+  with the database. In test_create_customer_with_order_total_less_than_100 add
+  assertions against the database and run pytest to confirm it works once the
+  changes are in. If those fail to run against the database. Tell me the error
+  so I can review it and propose a solution to fix it then we will go from
+  there.
+  ⎿  Read source/RewardsService/rewardsservice/handlers/base_handler.py (18
+     lines)
+  ⎿  Read source/RewardsService/load_mongo_data.py (27 lines)
+
+⏺ I'll start by reading the files involved.
+
+  Read 3 files (ctrl+o to expand)
+
+⏺ Bash(git ls-files | grep -v pycache && cat docker-compose.yml 2>/dev/null; ls
+      source/RewardsService source/RewardsService/rewardsservice/tests)
+  ⎿  (No output)
+
+  Read 8 files (ctrl+o to expand)
+
+⏺ Bash(cd /Users/colinstead/Projects/urbn/platform-services-python-test/source/R
+      ewardsService && echo "MONGODB_URI=$MONGODB_URI"; cat requirements.txt; ls
+      -a . ..; cat…)
+  ⎿  (No output)
+
+⏺ Bash(cd /Users/colinstead/Projects/urbn/platform-services-python-test && ls
+      .venv/bin | grep -i -E "pytest|python|pip" ; .venv/bin/python -c "import
+      pymongo,tornado,…)
+  ⎿  (No output)
+
+⏺ Updated plan
+  ⎿  /plan to preview
+  ⎿  Error: User chose to stay in plan mode and continue planning
+
+     Comments on the plan:
+     [Re: "test_create_customer_on_existing_customer_returns_409 still depends
+     on the earlier test having created tester@gmail.com (same as today; the
+     TODO in it can be resolved later by seeding in the test)."] On this test at
+     the TODO create a customer with the email beforehand. The Tests should
+     remove anything they create before proceeding.
+     [Re: "Verification"] Tell me what is needed to run tests as well so I can
+     update the readme for reviewers to test
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ Approved Claude's plan
+  ⎿  Plan saved to: ~/.claude/plans/i-need-to-configure-groovy-harbor-of-9bbcb88
+     4-d0a8-46bd-b86e-cf6b7fa591b4.md · /plan to edit
+     Plan: "Tests" database for pytest, configured via os.environ in database.py
+
+     Context
+
+     DB config is currently hardcoded in three places: BaseHandler.CLIENT =
+     MongoClient("mongodb", 27017) plus "Rewards" in
+     customers_handler.py:20, rewards_handler.py:6 and models/customers.py:27 (+
+     DB = "Rewards" at line 14), and
+     load_mongo_data.py. Tests currently hit the docker server on :7050 (which
+     uses "Rewards"), so they pollute real data.
+
+     Findings that shape the design:
+     - pytest runs on the host (.venv, Python 3.14, pytest installed); Mongo is
+       a docker container with 27017 published.
+       The hostname mongodb only resolves inside docker, so on the host the
+       tests must use localhost.
+     - The server on :7050 is a running container pinned to "Rewards", so tests
+       can't make it use "Tests".
+       Approach: pytest starts its own in-process Tornado server (port 7051) in
+       a background thread, after setting
+       os.environ to point at the "Tests" DB. The 7050 server/"Rewards" DB are
+       never touched. No docker/compose changes.
+     - MONGODB_URI (used by test_connection) is not set anywhere; it will be
+       replaced by the shared config.
+
+     Changes
+
+     1. source/RewardsService/database.py (currently only imports) — single
+        source of DB config:
+        - os.environ.setdefault for MONGO_HOST ("mongodb"), MONGO_PORT
+          ("27017"), DB_NAME ("Rewards").
+        - get_client() (cached MongoClient(host, port)) and get_db() returning
+          client[os.environ["DB_NAME"]],
+          read at call time so env changes are honoured.
+     2. handlers/base_handler.py — replace the hardcoded MongoClient with CLIENT
+        = database.get_client()
+        (keep the CLIENT attribute so customers_handler.py:145 keeps working).
+     3. handlers/customers_handler.py, handlers/rewards_handler.py — replace DB
+        = BaseHandler.CLIENT["Rewards"]
+        with database.get_db().
+     4. models/customers.py — drop hardcoded DB = "Rewards" /
+        self._client["Rewards"]; use database.get_db().
+     5. load_mongo_data.py — refactor to load(db) using database.get_db():
+        drop+insert rewards, drop customers.
+        main() still works unchanged for the init_data compose service
+        ("Rewards" default); conftest reuses load().
+     6. rewardsservice/tests/conftest.py (new):
+        - At top, before any app import: add rewardsservice/ and RewardsService/
+          to sys.path;
+          os.environ["DB_NAME"] = "Tests", os.environ.setdefault("MONGO_HOST",
+          "localhost").
+        - Session fixture (autouse): seed rewards via load_mongo_data.load(),
+          start Tornado App(url_patterns) on port 7051
+          in a daemon thread (own asyncio loop), wait until it accepts
+          connections; on teardown stop the loop and
+          drop the customers collection (rewards stay). Customers are also
+          dropped at seed time so a crashed run can't leak data.
+        - Function-scoped autouse fixture clean_customers:
+          db.customers.delete_many({}) before and after every test, so each
+          test starts from an empty customers collection and removes whatever it
+          created (no cross-test dependencies).
+        - Fixtures base_url (http://localhost:7051) and db (database.get_db()).
+     7. tests/customers_test.py, tests/rewards_test.py — use base_url/db
+        fixtures instead of the hardcoded
+        localhost:7050 and MONGODB_URI (test_connection pings via the db
+        client).
+        In test_create_customer_with_order_total_less_than_100 add DB
+        assertions:
+        db.customers.count_documents({"email": ...}) == 1; the stored doc has
+        rewardPoints == 99, rewardTier is None,
+        rewardTierName is None, nextRewardTier == "A"; and the stored doc
+        matches the response body.
+     8. READMEs — short note on the Tests DB, port 7051, env vars, and how to
+        run pytest.
+
+     Notes / risks
+
+     - test_create_customer_on_existing_customer_returns_409: resolve the TODO
+       by inserting tester@gmail.com into
+       db.customers at the start of the test (via the db fixture), then POST and
+       expect 409. The clean_customers fixture
+       removes it afterwards, so the test no longer depends on test order.
+     - Python 3.14 + tornado 6.5.10 / pymongo 4.11.3 compatibility on the host
+       is unverified; if the run fails I'll
+       stop and report the exact error as you asked rather than work around it.
+
+     What reviewers need to run the tests (I'll hand you this for the README
+     after implementation)
+
+     1. Docker running with the Mongo container up and port 27017 published: cd
+        source/RewardsService && docker-compose up -d
+        (the mongodb service is enough; the 7050 service may stay up but is not
+        used by the tests).
+     2. Python 3.10+ virtualenv on the host with deps: python -m venv .venv &&
+        .venv/bin/pip install -r source/RewardsService/requirements.txt.
+     3. Port 7051 free (test server) — no env vars required; defaults point
+        pytest at localhost:27017, DB Tests.
+        Overrides if needed: MONGO_HOST, MONGO_PORT.
+     4. Run: cd source/RewardsService && ../../.venv/bin/pytest
+        rewardsservice/tests -v.
+     5. Expected: tests create/seed the Tests DB automatically, customers is
+        cleared per test and dropped at session end; Rewards DB is untouched.
+
+     Verification
+
+     From source/RewardsService: ../../.venv/bin/pytest rewardsservice/tests -v
+     (requires the mongodb container up; the rewardsservice container on 7050
+     can stay running).
+     - Confirm tests pass and the new DB assertions execute.
+     - Afterwards: docker exec mongodb mongosh --quiet --eval
+       'db.getSiblingDB("Tests").customers.countDocuments({})' → 0,
+       Tests.rewards has 10 docs, and Rewards.customers is unchanged.
+     - If anything fails to run against the DB, report the error to you and
+       stop.
+
+⏺ Write(source/RewardsService/database.py)
+  ⎿  Added 41 lines, removed 1 line
+       1 +"""                                                            
+       2 +Database configuration shared by the service, the data loader a
+         +nd the tests.                                                  
+       3 +                                                               
+       4 +Connection settings live in os.environ so they can be changed w
+         +ithout touching code                                           
+       5 +(the tests set DB_NAME=Tests before the app is imported):      
+       6 +                                                               
+       7 +    MONGO_HOST  host name of the MongoDB server   (default: "mo
+         +ngodb", the docker compose service)                            
+       8 +    MONGO_PORT  port of the MongoDB server        (default: 270
+         +17)                                                            
+       9 +    DB_NAME     database the service reads/writes (default: "Re
+         +wards")                                                        
+      10 +"""                                                            
+      11  import os
+       2 -from pymongo import MongoClient                                
+         \ No newline at end of file
+      12 +                                                               
+      13 +from pymongo import MongoClient                                
+      14 +                                                               
+      15 +os.environ.setdefault("MONGO_HOST", "mongodb")                 
+      16 +os.environ.setdefault("MONGO_PORT", "27017")                   
+      17 +os.environ.setdefault("DB_NAME", "Rewards")                    
+      18 +                                                               
+      19 +_client = None                                                 
+      20 +                                                               
+      21 +                                                               
+      22 +def get_client():                                              
+      23 +    """                                                        
+      24 +    Get the shared MongoClient, creating it on first use.      
+      25 +                                                               
+      26 +    Returns:                                                   
+      27 +        MongoClient: A client for MONGO_HOST:MONGO_PORT        
+      28 +    """                                                        
+      29 +    global _client                                             
+      30 +    if _client is None:                                        
+      31 +        _client = MongoClient(os.environ["MONGO_HOST"], int(os.
+         +environ["MONGO_PORT"]))                                        
+      32 +    return _client                                             
+      33 +                                                               
+      34 +                                                               
+      35 +def get_db():                                                  
+      36 +    """                                                        
+      37 +    Get the database named by DB_NAME. DB_NAME is read on every
+         + call so changes to os.environ are honoured.                   
+      38 +                                                               
+      39 +    Returns:                                                   
+      40 +        Database: The active database ("Rewards" by default, "T
+         +ests" under pytest)                                            
+      41 +    """                                                        
+      42 +    return get_client()[os.environ["DB_NAME"]]                 
+
+⏺ Write(source/RewardsService/rewardsservice/handlers/base_handler.py)
+  ⎿  Added 2 lines, removed 2 lines
+       4  """
+       5  import tornado.web
+       6 
+       7 -from pymongo import MongoClient                                
+       7 +import database                                                
+       8 
+       9  class BaseHandler(tornado.web.RequestHandler):
+      10 -    CLIENT = MongoClient("mongodb", 27017)                     
+      10 +    CLIENT = database.get_client()                             
+      11 
+      12      def set_default_headers(self):
+      13          """
+
+⏺ Update(source/RewardsService/rewardsservice/handlers/rewards_handler.py)
+  ⎿  Added 3 lines, removed 2 lines
+       1  import json
+       2 
+       3 -from pymongo import MongoClient                                
+       3 +import database                                                
+       4 +                                                               
+       5  from .base_handler import BaseHandler
+       6 
+       6 -DB = BaseHandler.CLIENT["Rewards"]                             
+       7 +DB = database.get_db()                                         
+       8 
+       9  class RewardsHandler(BaseHandler):
+      10 
+
+⏺ Update(source/RewardsService/rewardsservice/handlers/customers_handler.py)
+  ⎿  Added 4 lines, removed 2 lines
+      10  import pymongo
+      11  import validators
+      12 
+      13 -from pymongo import MongoClient, errors                        
+      13 +import database                                                
+      14 +                                                               
+      15 +from pymongo import errors                                     
+      16  from .base_handler import BaseHandler
+      17  from models.customers import Customer
+      18 
+      19  MINIMUM_REWARDS = 100
+      20  MAXIMUM_REWARDS = 1000
+      21 
+      20 -DB = BaseHandler.CLIENT["Rewards"]                             
+      22 +DB = database.get_db()                                         
+      23 
+      24  def _validate_customers_request(data):
+      25      """
+
+⏺ Update(source/RewardsService/rewardsservice/models/customers.py)
+  ⎿  Added 2 lines, removed 2 lines
+       8  import math
+       9  import pymongo
+      10 
+      11 +import database                                                
+      12 +                                                               
+      13  from pymongo import MongoClient
+      12 -from pymongo.client_session import ClientSession               
+      14 
+      14 -DB = "Rewards"                                                 
+      15  CUSTOMER_COLLECTION = "customers"
+      16  REWARDS_COLLECTION = "rewards"
+      17  MINIMUM_REWARDS = 100
+
+⏺ Update(source/RewardsService/rewardsservice/models/customers.py)
+  ⎿  Added 1 line, removed 1 line
+      24 
+      25      def __init__(self, client: MongoClient):
+      26          self._client = client
+      27 -        self._db = self._client["Rewards"]                     
+      27 +        self._db = database.get_db()                           
+      28 
+      29          self._collection = self._db.get_collection(CUSTOMER_COL
+          LECTION)
+      30          self._collection.create_index("email", unique=True) # F
+          aster lookups on email, email must be unique
+
+⏺ Write(source/RewardsService/load_mongo_data.py)  ⎿  Added 29 lines, removed 16 lines
+       1  #!/usr/bin/env python
+       2 -from pymongo import MongoClient                                
+       2 +import database                                                
+       3 
+       4 +REWARDS = [                                                    
+       5 +    {"points": 100, "rewardName": "5% off purchase", "tier": "A
+         +"},                                                            
+       6 +    {"points": 200, "rewardName": "10% off purchase", "tier": "
+         +B"},                                                           
+       7 +    {"points": 300, "rewardName": "15% off purchase", "tier": "
+         +C"},                                                           
+       8 +    {"points": 400, "rewardName": "20% off purchase", "tier": "
+         +D"},                                                           
+       9 +    {"points": 500, "rewardName": "25% off purchase", "tier": "
+         +E"},                                                           
+      10 +    {"points": 600, "rewardName": "30% off purchase", "tier": "
+         +F"},                                                           
+      11 +    {"points": 700, "rewardName": "35% off purchase", "tier": "
+         +G"},                                                           
+      12 +    {"points": 800, "rewardName": "40% off purchase", "tier": "
+         +H"},                                                           
+      13 +    {"points": 900, "rewardName": "45% off purchase", "tier": "
+         +I"},                                                           
+      14 +    {"points": 1000, "rewardName": "50% off purchase", "tier": 
+         +"J"},                                                          
+      15 +]                                                              
+      16 
+       5 -def main():                                                    
+       6 -    client = MongoClient("mongodb", 27017)                     
+       7 -    db = client["Rewards"]                                     
+      17 
+       9 -    print("Removing and reloading rewards in mongo")           
+      18 +def load(db):                                                  
+      19 +    """                                                        
+      20 +    Drop and reload the rewards collection, and empty out the c
+         +ustomers collection.                                           
+      21 +                                                               
+      22 +    Parameters:                                                
+      23 +        db (Database): The database to load into (set by DB_NAM
+         +E, see database.py)                                            
+      24 +    """                                                        
+      25      db.rewards.drop()
+      11 -    db.rewards.insert_one({"points": 100, "rewardName": "5% off
+         - purchase", "tier": "A"})                                      
+      12 -    db.rewards.insert_one({"points": 200, "rewardName": "10% of
+         -f purchase", "tier": "B"})                                     
+      13 -    db.rewards.insert_one({"points": 300, "rewardName": "15% of
+         -f purchase", "tier": "C"})                                     
+      14 -    db.rewards.insert_one({"points": 400, "rewardName": "20% of
+         -f purchase", "tier": "D"})                                     
+      15 -    db.rewards.insert_one({"points": 500, "rewardName": "25% of
+         -f purchase", "tier": "E"})                                     
+      16 -    db.rewards.insert_one({"points": 600, "rewardName": "30% of
+         -f purchase", "tier": "F"})                                     
+      17 -    db.rewards.insert_one({"points": 700, "rewardName": "35% of
+         -f purchase", "tier": "G"})                                     
+      18 -    db.rewards.insert_one({"points": 800, "rewardName": "40% of
+         -f purchase", "tier": "H"})                                     
+      19 -    db.rewards.insert_one({"points": 900, "rewardName": "45% of
+         -f purchase", "tier": "I"})                                     
+      20 -    db.rewards.insert_one({"points": 1000, "rewardName": "50% o
+         -ff purchase", "tier": "J"})                                    
+      26 +    db.rewards.insert_many([dict(reward) for reward in REWARDS]
+         +)                                                              
+      27 +    db.customers.drop()                                        
+      28 +                                                               
+      29 +                                                               
+      30 +def main():                                                    
+      31 +    db = database.get_db()                                     
+      32 +                                                               
+      33 +    print(f"Removing and reloading rewards in mongo ({db.name})
+         +")                                                             
+      34 +    load(db)                                                   
+      35      print("Rewards loaded in mongo")
+      36 
+      23 -    db.customers.drop()                                        
+      37 
+      38  if __name__ == "__main__":
+      39      main()
+
+⏺ Write(source/RewardsService/rewardsservice/tests/conftest.py)
+  ⎿  Wrote 104 lines to
+     source/RewardsService/rewardsservice/tests/conftest.py
+       1 """
+       2 Pytest configuration: runs the service against the "Tests" datab
+         ase.
+       3
+       4 The server on localhost:7050 (docker) uses the "Rewards" databas
+         e, so the tests start their own
+       5 copy of the Tornado app on TEST_PORT with DB_NAME=Tests. The env
+         ironment is set up before anything
+       6 from the app is imported, because the handlers read it from data
+         base.py at import time.
+     … +98 lines (ctrl+o to expand)
+
+⏺ Write(source/RewardsService/rewardsservice/tests/rewards_test.py)
+  ⎿  Added 2 lines, removed 3 lines
+       3  """
+       4  import requests
+       5 
+       6 -BASE_URL = "http://localhost:7050"                             
+       6 
+       8 -def test_get_rewards():                                        
+       9 -    response = requests.get(f"{BASE_URL}/rewards")             
+       7 +def test_get_rewards(base_url):                                
+       8 +    response = requests.get(f"{base_url}/rewards")             
+       9      assert response.status_code == 200
+
+⏺ Bash(cd /Users/colinstead/Projects/urbn/platform-services-python-test/source/R
+      ewardsService/rewardsservice/tests && python3 - <<'EOF'
+      import re…)
+  ⎿  (No output)
+
+⏺ Bash(cd /Users/colinstead/Projects/urbn/platform-services-python-test/source/R
+      ewardsService && ../../.venv/bin/pytest rewardsservice/tests -v 2>&1 |
+      tail -40)
+  ⎿  (No output)
+
+⏺ The test harness is at fault, not the database: importing app.py starts
+  Tornado's autoreload on a thread with no event loop under Python 3.14. I'll
+  build a plain Application inside the server thread instead. · summary
+
+⏺ Update(source/RewardsService/rewardsservice/tests/conftest.py)
+  ⎿  Added 1 line, removed 1 line
+      67      load_mongo_data.load(db)
+      68 
+      69      import tornado.httpserver
+      70 -    from app import App                                        
+      70 +    import tornado.web                                         
+      71      from url_patterns import url_patterns
+      72 
+      73      started = threading.Event()
+
+⏺ Update(source/RewardsService/rewardsservice/tests/conftest.py)
+  ⎿  Added 2 lines, removed 1 line
+      76      def serve():
+      77          loop = asyncio.new_event_loop()
+      78          asyncio.set_event_loop(loop)
+      79 -        server = tornado.httpserver.HTTPServer(App(url_patterns
+         -))                                                             
+      79 +        # Same routes as app.py, but without its debug/autorelo
+         +ad settings (app.py also builds the app at import time)        
+      80 +        server = tornado.httpserver.HTTPServer(tornado.web.Appl
+         +ication(url_patterns))                                         
+      81          server.listen(TEST_PORT)
+      82          state["loop"], state["server"] = loop, server
+      83          started.set()
+
+⏺ Bash(../../.venv/bin/pytest rewardsservice/tests -v 2>&1 | tail -40)
+  ⎿  (No output)
+
+⏺ All 8 pass. Next I'll confirm the data landed in "Tests" and "Rewards" wasn't
+  touched, then update the READMEs.
+
+⏺ Bash(docker exec mongodb mongosh --quiet --eval 'printjson({dbs:
+      db.adminCommand({listDatabases:1}).databases.map(d=>d.name),
+      testsCustomers: db.getSiblingDB("Tests"…)
+  ⎿  (No output)
+
+⏺ The "Tests" database isn't in the container's Mongo, although the tests passed
+  against it. I'll check which Mongo localhost:27017 actually reaches.
+
+⏺ Bash(lsof -nP -iTCP:27017 -sTCP:LISTEN 2>&1 | head; .venv/bin/python - <<'EOF'
+      from pymongo import MongoClient…)
+  ⎿  (No output)
+
+⏺ Bash(docker port mongodb; docker ps --format '{{.Names}} {{.Image}}
+      {{.Ports}}' | grep -i -E "mongo|27017"; docker exec mongodb mongosh
+      --quiet --eval 'printjson({pi…)
+  ⎿  (No output)
+
+⏺ Bash(docker ps -a --format '{{.ID}} {{.Names}} {{.Image}} {{.Status}}
+      {{.Ports}}' | grep -v k8s_)
+  ⎿  (No output)
+
+⏺ Bash(docker ps -a --format '{{.ID}} {{.Names}} {{.Image}} {{.Status}}
+      {{.Ports}}' | grep -i -E "9e1b0854c757|mongo"; docker ps -a --format
+      '{{.ID}}' | grep 9e1b || e…)
+  ⎿  (No output)
+
+⏺ Bash(docker context ls 2>&1; echo ---; lsof -nP -iTCP:27017 2>&1 | head; echo
+      ---; ps aux | grep -i -E "mongod|colima|rancher|lima|vpnkit|docker" | grep
+      -v grep | he…)
+  ⎿  (No output)
+
+⏺ Bash(docker exec rewardsservice python -c "import database;
+      print(database.get_db().name, database.get_client().address)"; sleep 2;
+      curl -s -o /dev/null -w "7050 /re…)
+  ⎿  (No output)
+
+⏺ The Tests DB setup is in place and all 8 tests pass against it, including the
+  new database assertions. Your "Rewards" server on 7050 still answers (/rewards
+  returns 200) and still resolves to the "Rewards" DB.
+
+  Your host's localhost:27017 is not the Mongo that your docker CLI shows.
+  docker exec mongodb reports container a5ecfe0faf88, which is in Rancher
+  Desktop (your active docker context). Port 27017 on the host is answered by
+  Docker Desktop's engine, which has its own Mongo with host id 9e1b0854c757,
+  and that's what pytest and TablePlus reach. The pytest data is in that second
+  instance. I only looked at "Tests" there. It now has 10 rewards and no
+  customers.
+
+  Your 7050 container's "Rewards" DB (5 customers in it) is in the Rancher
+  instance and was not touched. If you want pytest to hit the Rancher Mongo
+  instead, stop Docker Desktop's engine so Rancher's port mapping works, or
+  point MONGO_HOST/MONGO_PORT at wherever it is reachable.
+
+  What changed
+
+  - database.py (source/RewardsService/database.py) sets MONGO_HOST, MONGO_PORT
+    and DB_NAME in os.environ (defaults mongodb, 27017, Rewards). It exposes
+    get_client() and get_db().
+  - Handlers and model: base_handler.py, customers_handler.py,
+    rewards_handler.py and models/customers.py now use database.get_db(), so
+    none of them hardcode "Rewards" any more.
+  - load_mongo_data.py (source/RewardsService/load_mongo_data.py) now has a
+    reusable load(db). main() behaves as before for the init_data service.
+  - tests/conftest.py (source/RewardsService/rewardsservice/tests/conftest.py)
+    (new) sets DB_NAME=Tests before anything is imported. It seeds the rewards
+    and starts the app on port 7051 for the test session. customers is emptied
+    before and after every test and dropped at the end of the session, while the
+    rewards stay.
+  - Tests:
+    - They now use base_url and db fixtures.
+    - test_create_customer_with_order_total_less_than_100 now checks the stored
+      customer: count of 1, 99 points, no tier, and nextRewardTier == "A". It
+      also checks the stored document equals the response body.
+    - The 409 test inserts its own customer first (the TODO) and no longer
+      depends on test order.
+    - test_connection no longer needs MONGODB_URI.
+
+  Importing app.py crashed on Python 3.14, because its debug=True autoreload
+  needs an event loop on the main thread. That was a harness problem, not a
+  database error. The test server now builds a plain
+  tornado.web.Application(url_patterns) from the same routes.
+
+  What a reviewer needs to run the tests
+
+  I didn't edit the READMEs, since you said you'd do that.
+  1. A MongoDB container running with port 27017 published to the host, for
+     example cd source/RewardsService && docker-compose up -d. The 7050 service
+     doesn't need to be running.
+  2. A host virtualenv with the dependencies: python -m venv .venv &&
+     .venv/bin/pip install -r source/RewardsService/requirements.txt.
+  3. Port 7051 free. No environment variables are needed, because pytest
+     defaults to localhost:27017 and the Tests DB. You can override with
+     MONGO_HOST and MONGO_PORT.
+  4. Run cd source/RewardsService && ../../.venv/bin/pytest rewardsservice/tests
+     -v.
+
+  The tests create and seed the Tests DB themselves.
