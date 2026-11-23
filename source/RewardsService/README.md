@@ -88,6 +88,7 @@ PR DESCRIPTION:
 * Add a BaseHandler to build off of so the headers come through as JSON instead of HTML project wide
 * Add customers url pattern
 * Add customer_handler for customer routes to be added
+* Add simple get customers route
 
 BRANCH: feature/2-post-customer-rewards ([PUBLIC PR LINK](https://github.com/colin-stead/platform-services-python-test/pull/6))
 PR DESCRIPTION:
