@@ -46,7 +46,7 @@ Create RESTful endpoint(s) to calculate, store, and retrieve customer rewards da
 
 Setup stays the same with the following packages added to [requirements.txt](requirements.txt)
 * `validators 0.35.0` for customer email validation without a need for regex. In a real setting this could be used for initial validation but ultimately a confirmation email would need to be sent to the user to validate the email.
-* `pytest 9.2.0` for unit testing
+* `pytest 9.2.0` for unit testing.
 * `requests 2.34.2` for hitting endpoints in pytest.
 
 # Endpoints
@@ -68,11 +68,11 @@ Setup stays the same with the following packages added to [requirements.txt](req
     * Example 409 Response:
         ```
         {
-            "message": "Cannot create Customer. Customer with email: colin@gmail.com already exists.",
+            "message": "Cannot create Customer. Customer with email: colin@urbn.com already exists.",
             "meta": {
                 "message": "Use the PUT method to update the Customer's rewards.",
                 "method": "PUT",
-                "url": "/customers/colin@gmail.com"
+                "url": "/customers/colin@urbn.com"
             }
         }
         ```
@@ -98,7 +98,7 @@ Setup stays the same with the following packages added to [requirements.txt](req
         ```
         [
             {
-                "email": "jackie@gmail.com",
+                "email": "jackie@urbn.com",
                 "nextRewardTier": null,
                 "nextRewardTierProgress": 0.99,
                 "rewardPoints": 1000,
@@ -106,7 +106,7 @@ Setup stays the same with the following packages added to [requirements.txt](req
                 "rewardTierName": "50% off purchase"
             },
             {
-                "email": "colin@gmail.com",
+                "email": "colin@urbn.com",
                 "nextRewardTier": "B",
                 "nextRewardTierProgress": 0.13,
                 "rewardPoints": 113,
