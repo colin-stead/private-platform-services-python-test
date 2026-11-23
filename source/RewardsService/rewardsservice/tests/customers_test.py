@@ -17,7 +17,6 @@ def test_we_can_find_customer_with_email(base_url, db):
     - The status code should be 200 (OK)
     - The response should match data for the customer in the db
     """
-
     payload = {"email": "tester@gamil.com", "orderTotal": 234}
 
     # Create a B Tier customer, nextRewardTier will be C    
