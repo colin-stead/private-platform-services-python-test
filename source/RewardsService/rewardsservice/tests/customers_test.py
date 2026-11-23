@@ -3,13 +3,11 @@ Customers handler test files.
 """
 import requests
 
-BASE_URL = "http://localhost:7050"
-
-def test_get_customers():
-    response = requests.get(f"{BASE_URL}/customers")
+def test_get_customers(base_url):
+    response = requests.get(f"{base_url}/customers")
     assert response.status_code == 200
 
-def test_create_customer_with_order_total_less_than_100():
+def test_create_customer_with_order_total_less_than_100(base_url, db):
     """
     Test POST /customers endpoint
 
@@ -18,13 +16,14 @@ def test_create_customer_with_order_total_less_than_100():
     - A Customer should be created
     - The Customer should not have a rewardsTier
     - The nextRewardsTier should be 'A'
+    - The Customer should be saved in the Tests DB customers collection
     """
     payload = {
         "email": "tester@gmail.com",
         "orderTotal": 99
     }
 
-    response = requests.post(f"{BASE_URL}/customers", json=payload)
+    response = requests.post(f"{base_url}/customers", json=payload)
     response_body = response.json()
 
     assert response.status_code == 201
@@ -32,7 +31,17 @@ def test_create_customer_with_order_total_less_than_100():
     assert response_body["rewardTier"] == None
     assert response_body["rewardTierName"] == None
 
-def test_create_customer_on_existing_customer_returns_200():
+    # The Customer should have been saved to the database
+    assert db.customers.count_documents({"email": payload["email"]}) == 1
+
+    customer = db.customers.find_one({"email": payload["email"]}, {"_id": 0})
+    assert customer["rewardPoints"] == 99
+    assert customer["rewardTier"] is None
+    assert customer["rewardTierName"] is None
+    assert customer["nextRewardTier"] == "A"
+    assert customer == response_body
+
+def test_create_customer_on_existing_customer_returns_409(base_url, db):
     """
     Test POST /customers endpoint
 
@@ -40,19 +49,21 @@ def test_create_customer_on_existing_customer_returns_200():
     - The order total should be customer's reward points + orderTotal (rounded down)
     - The Customer should be updated, not created
     """
-    # TODO: Add existing customer to test DB
+    # Add the existing customer to the Tests DB (removed again after the test by the clean_customers fixture)
+    db.customers.insert_one({"email": "tester@gmail.com", "rewardPoints": 99, "rewardTier": None, "rewardTierName": None})
 
     payload = {
         "email": "tester@gmail.com",
         "orderTotal": 99
     }
 
-    response = requests.post(f"{BASE_URL}/customers", json=payload)
+    response = requests.post(f"{base_url}/customers", json=payload)
     response_body = response.json()
 
-    assert response.status_code == 200
+    assert response.status_code == 409
+    assert db.customers.count_documents({"email": payload["email"]}) == 1
 
-def test_create_customer_with_invalid_email_fails_validation():
+def test_create_customer_with_invalid_email_fails_validation(base_url):
     """
     Test POST /customers endpoint
 
@@ -63,10 +74,10 @@ def test_create_customer_with_invalid_email_fails_validation():
         "orderTotal": 99.99
     }
 
-    response = requests.post(f"{BASE_URL}/customers", json=payload)
+    response = requests.post(f"{base_url}/customers", json=payload)
     assert response.status_code == 422
 
-def test_create_customer_with_invalid_order_total_fails_validation():
+def test_create_customer_with_invalid_order_total_fails_validation(base_url):
     """
     Test POST /customers endpoint
 
@@ -77,10 +88,10 @@ def test_create_customer_with_invalid_order_total_fails_validation():
         "orderTotal": 99.997
     }
 
-    response = requests.post(f"{BASE_URL}/customers", json=payload)
+    response = requests.post(f"{base_url}/customers", json=payload)
     assert response.status_code == 422
 
-def test_create_customer_with_invalid_payload_fails_validation_with_two_errors():
+def test_create_customer_with_invalid_payload_fails_validation_with_two_errors(base_url):
     """
     Test POST /customers endpoint
 
@@ -93,7 +104,7 @@ def test_create_customer_with_invalid_payload_fails_validation_with_two_errors()
         "orderTotal": 99.997
     }
 
-    response = requests.post(f"{BASE_URL}/customers", json=payload)
+    response = requests.post(f"{base_url}/customers", json=payload)
     assert response.status_code == 422
 
     body = response.json()
