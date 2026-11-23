@@ -109,7 +109,8 @@ class CustomersHandler(BaseHandler):
                 self.write(json.dumps(customers, indent=4))
             else:
                 # Implement email logic here, for now return first where email is email
-                customer = DB.customers.find_one({"email": email}, {"_id": 0})
+                customer = Customer()
+                customer = customer.find(email)
 
                 if customer == None:
                     self.set_status(404)

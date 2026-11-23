@@ -108,7 +108,7 @@ If you have more than one container engine installed (for example Rancher Deskto
 * `GET /customers`
     * Gets a list of all the customers that are in the database.
     * Response Codes 200
-    * Example 200 Response:
+    * Example 200 Response (with data in DB):
         ```
         [
             {
@@ -129,7 +129,31 @@ If you have more than one container engine installed (for example Rancher Deskto
             }
         ]
         ```
+    * Example 200 Response (without data in DB):
+        ```
+        []
+        ```
 * `GET /customers/{customer_email}`
+    * Get a customer from the database with their email
+    * Response Codes 200, 404
+    * Example 200 Response:
+        ```
+        {
+            "email": "colin@gmail.com",
+            "nextRewardTier": "B",
+            "nextRewardTierProgress": 0.13,
+            "rewardPoints": 113,
+            "rewardTier": "A",
+            "rewardTierName": "5% off purchase"
+        }
+        ```
+    * Example 404 Response:
+        ```
+        {
+            "error": "404 Not Found",
+            "message": "Customer not found"
+        }
+        ```
 * `PUT /customers/{customer_email}`
 
 # Assumptions & Tradeoffs
