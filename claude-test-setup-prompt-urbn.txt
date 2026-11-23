@@ -193,7 +193,7 @@
      - If anything fails to run against the DB, report the error to you and
        stop.
 
-⏺ Write(source/RewardsService/database.py)
+⏺ Write(database.py)
   ⎿  Added 41 lines, removed 1 line
        1 +"""                                                            
        2 +Database configuration shared by the service, the data loader a
@@ -248,7 +248,7 @@
       41 +    """                                                        
       42 +    return get_client()[os.environ["DB_NAME"]]                 
 
-⏺ Write(source/RewardsService/rewardsservice/handlers/base_handler.py)
+⏺ Write(rewardsservice/handlers/base_handler.py)
   ⎿  Added 2 lines, removed 2 lines
        4  """
        5  import tornado.web
@@ -263,7 +263,7 @@
       12      def set_default_headers(self):
       13          """
 
-⏺ Update(source/RewardsService/rewardsservice/handlers/rewards_handler.py)
+⏺ Update(rewardsservice/handlers/rewards_handler.py)
   ⎿  Added 3 lines, removed 2 lines
        1  import json
        2 
@@ -278,7 +278,7 @@
        9  class RewardsHandler(BaseHandler):
       10 
 
-⏺ Update(source/RewardsService/rewardsservice/handlers/customers_handler.py)
+⏺ Update(rewardsservice/handlers/customers_handler.py)
   ⎿  Added 4 lines, removed 2 lines
       10  import pymongo
       11  import validators
@@ -299,7 +299,7 @@
       24  def _validate_customers_request(data):
       25      """
 
-⏺ Update(source/RewardsService/rewardsservice/models/customers.py)
+⏺ Update(rewardsservice/models/customers.py)
   ⎿  Added 2 lines, removed 2 lines
        8  import math
        9  import pymongo
@@ -314,7 +314,7 @@
       16  REWARDS_COLLECTION = "rewards"
       17  MINIMUM_REWARDS = 100
 
-⏺ Update(source/RewardsService/rewardsservice/models/customers.py)
+⏺ Update(rewardsservice/models/customers.py)
   ⎿  Added 1 line, removed 1 line
       24 
       25      def __init__(self, client: MongoClient):
@@ -327,7 +327,7 @@
       30          self._collection.create_index("email", unique=True) # F
           aster lookups on email, email must be unique
 
-⏺ Write(source/RewardsService/load_mongo_data.py)  ⎿  Added 29 lines, removed 16 lines
+⏺ Write(load_mongo_data.py)  ⎿  Added 29 lines, removed 16 lines
        1  #!/usr/bin/env python
        2 -from pymongo import MongoClient                                
        2 +import database                                                
@@ -408,9 +408,8 @@
       38  if __name__ == "__main__":
       39      main()
 
-⏺ Write(source/RewardsService/rewardsservice/tests/conftest.py)
-  ⎿  Wrote 104 lines to
-     source/RewardsService/rewardsservice/tests/conftest.py
+⏺ Write(rewardsservice/tests/conftest.py)
+  ⎿  Wrote 104 lines to rewardsservice/tests/conftest.py
        1 """
        2 Pytest configuration: runs the service against the "Tests" datab
          ase.
@@ -423,7 +422,7 @@
          base.py at import time.
      … +98 lines (ctrl+o to expand)
 
-⏺ Write(source/RewardsService/rewardsservice/tests/rewards_test.py)
+⏺ Write(rewardsservice/tests/rewards_test.py)
   ⎿  Added 2 lines, removed 3 lines
        3  """
        4  import requests
@@ -450,7 +449,7 @@
   Tornado's autoreload on a thread with no event loop under Python 3.14. I'll
   build a plain Application inside the server thread instead. · summary
 
-⏺ Update(source/RewardsService/rewardsservice/tests/conftest.py)
+⏺ Update(rewardsservice/tests/conftest.py)
   ⎿  Added 1 line, removed 1 line
       67      load_mongo_data.load(db)
       68 
@@ -461,7 +460,7 @@
       72 
       73      started = threading.Event()
 
-⏺ Update(source/RewardsService/rewardsservice/tests/conftest.py)
+⏺ Update(rewardsservice/tests/conftest.py)
   ⎿  Added 2 lines, removed 1 line
       76      def serve():
       77          loop = asyncio.new_event_loop()
@@ -579,3 +578,379 @@
      -v.
 
   The tests create and seed the Tests DB themselves.
+
+❯ <ide_selection>The user selected the lines 60 to 97 from
+  /Users/colinstead/Projects/urbn/platform-services-python-test/source/RewardsS
+  ervice/rewardsservice/tests/conftest.py:
+  def test_server(db):
+      """
+      Seed the Tests DB with the rewards, serve the app on TEST_PORT for the
+  session, and
+      drop the customers collection when the session ends. Rewards are left in
+  the Tests DB.
+      """
+      assert database.get_db().name == "Tests"  # never run the suite against
+  the real data
+
+      load_mongo_data.load(db)
+
+      import tornado.httpserver
+      import tornado.web
+      from url_patterns import url_patterns
+
+      started = threading.Event()
+      state = {}
+
+      def serve():
+          loop = asyncio.new_event_loop()
+          asyncio.set_event_loop(loop)
+          # Same routes as app.py, but without its debug/autoreload settings
+  (app.py also builds the app at import time)
+          server =
+  tornado.httpserver.HTTPServer(tornado.web.Application(url_patterns))
+          server.listen(TEST_PORT)
+          state["loop"], state["server"] = loop, server
+          started.set()
+          loop.run_forever()
+          server.stop()
+          loop.close()
+
+      thread = threading.Thread(target=serve, daemon=True)
+      thread.start()
+      assert started.wait(10), "Test server thread failed to start"
+      _wait_for_port(TEST_PORT)
+
+      yield
+
+      state["loop"].call_soon_threadsafe(state["loop"].stop)
+      thread.join(timeout=5)
+      db.customers.drop()
+
+  This may or may not be related to the current task.</ide_selection>
+
+❯ You can add these in the readme under a new section called "Testing". Put it
+  under Solution section. This will go in @README.md  and
+  @source/RewardsService/README.md
+
+  There's a warning lingering on the tests and it stems from
+  @source/RewardsService/rewardsservice/tests/conftest.py   I believe the issue
+  lives in the serve() function in test_server(). Here's the error:
+  rewardsservice/tests/customers_test.py::test_get_customers
+    /Users/colinstead/Projects/urbn/platform-services-python-test/.venv/lib/pyt
+  hon3.14/site-packages/tornado/platform/asyncio.py:371: DeprecationWarning:
+  'asyncio.DefaultEventLoopPolicy' is deprecated and slated for removal in
+  Python 3.16
+      _BasePolicy = asyncio.DefaultEventLoopPolicy
+
+  -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+  First diagnose why the warning is showing and the changes required to fix it.
+  Let me know if it is a breaking change or not and what updates we would need
+  to make to the README files.
+  ⎿  Read README.md (104 lines)
+  ⎿  Read source/RewardsService/README.md (126 lines)
+  ⎿  Read source/RewardsService/rewardsservice/tests/conftest.py (106 lines)
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Bash(sed -n 350,400p
+      .venv/lib/python3.14/site-packages/tornado/platform/asyncio.py; grep -n
+      "_BasePolicy\|DefaultEventLoopPolicy\|set_event_loop_policy" -r .venv/li…)  ⎿  (No output)
+
+⏺ Bash(cd /Users/colinstead/Projects/urbn/platform-services-python-test/source/R
+      ewardsService && cat database.py | head -5; grep -rn "database\|CLIENT"
+      --include=*.py…)
+  ⎿  (No output)
+
+⏺ Bash(cd /Users/colinstead/Projects/urbn/platform-services-python-test && git
+      log --oneline | head -5; git status --short | grep -v pycache; echo ---;
+      cat source/Rewa…)
+  ⎿  (No output)
+
+⏺ Bash(for v in v6.5.10 v6.6.1; do echo "== $v"; curl -s https://raw.githubuserc
+      ontent.com/tornadoweb/tornado/$v/tornado/platform/asyncio.py | grep -n -B2
+      -A6 "_BasePo…)
+  ⎿  (No output)
+
+⏺ Bash(.venv/bin/pip list 2>/dev/null | grep -i -E
+      "motor|pymongo|requests|validators|tornado|pytest"; cat
+      source/RewardsService/requirements.txt; git diff --stat -- R…)
+  ⎿  (No output)
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ Approved Claude's plan
+  ⎿  Plan saved to: ~/.claude/plans/i-need-to-configure-groovy-harbor-of-9bbcb88
+     4-d0a8-46bd-b86e-cf6b7fa591b4.md · /plan to edit
+     Plan: fix pytest DeprecationWarning + add "Testing" section to the READMEs
+
+     Context
+
+     The test DB setup is already committed (database.py, tests/conftest.py,
+     port 7051, "Tests" DB). Pytest still reports:
+
+     tornado/platform/asyncio.py:371: DeprecationWarning:
+     'asyncio.DefaultEventLoopPolicy' is deprecated and slated for removal in
+     Python 3.16
+         _BasePolicy = asyncio.DefaultEventLoopPolicy
+
+     Diagnosis
+
+     - It is not caused by serve() / test_server(). The warning fires at import
+       time of tornado.platform.asyncio
+       (a module-level _BasePolicy = asyncio.DefaultEventLoopPolicy), i.e. the
+       first time anything imports tornado
+       (conftest's import tornado.httpserver). pytest attributes it to whichever
+       test is running at that moment, which is why
+       it shows under test_connection / test_get_customers. serve() creates its
+       loop with asyncio.new_event_loop() and
+       never touches the policy API.
+     - Root cause: the host .venv has tornado 6.1 installed, not the pinned
+       6.5.10. requirements.txt pins
+       tornado==6.5.10, but pip list in .venv shows tornado 6.1. Tornado 6.5.10
+       (and 6.6.1) moved that code behind a lazy
+       module __getattr__ specifically so the warning only appears if
+       AnyThreadEventLoopPolicy is actually used
+       (verified in the upstream source for v6.5.10 and v6.6.1). Python 3.14
+       (host venv) is what makes the old code warn.
+     - Other pins match (pymongo 4.11.3, pytest 9.2.0, requests 2.34.2, motor
+       3.7.0). validators is 0.36.0 vs pinned 0.35.0 —
+       harmless, but the same pip install -r realigns it.
+
+     Fix
+
+     cd source/RewardsService && ../../.venv/bin/pip install -r requirements.txt
+     (upgrades tornado 6.1 → 6.5.10, validators → 0.35.0).
+     No code changes in conftest.py or serve() are needed.
+
+     Is it breaking? No. It is an environment sync to versions the project
+     already declares (and the Docker image already
+     installs). Tornado 6.1→6.5.10 spans several minor releases; the APIs used
+     here (RequestHandler, Application,
+     HTTPServer, IOLoop) are stable, but I will re-run the full suite to
+     confirm. Rewards on :7050 (Docker image, which
+     already builds with 6.5.10) is unaffected.
+
+     Fallback if the warning still shows after the upgrade: add
+     source/RewardsService/pytest.ini with a narrow filter
+     (ignore:'asyncio.DefaultEventLoopPolicy' is deprecated:DeprecationWarning)
+     rather than a blanket ignore.
+
+     README changes (identical new section in README.md and
+     source/RewardsService/README.md)
+
+     Add # Testing directly after the # Solution section (after the "I also
+     upgraded tornado to 6.5.10." line, before # Endpoints):
+
+     - Tests run on the host with pytest against a separate Tests database (not
+       Rewards); conftest.py starts its own
+       copy of the app on port 7051, so the service on 7050 and the Rewards data
+       are never touched.
+     - Prerequisites: MongoDB container running with 27017 published
+       (docker-compose up -d); Python virtualenv with
+       pip install -r source/RewardsService/requirements.txt (use the pinned
+       versions — an older tornado emits the
+       DeprecationWarning above on Python 3.14); port 7051 free.
+     - Run: cd source/RewardsService && pytest rewardsservice/tests -v.
+     - Behaviour: rewards is seeded into Tests each run, customers is emptied
+       before/after every test and dropped at the
+       end of the session (rewards remain).
+     - Config via env vars (read in database.py): MONGO_HOST (default mongodb;
+       pytest sets localhost), MONGO_PORT
+       (27017), DB_NAME (Rewards; pytest forces Tests).
+     - Note: if more than one container engine is installed (Rancher Desktop +
+       Docker Desktop here), make sure the Mongo that
+       owns host port 27017 is the one you expect.
+
+     The existing line "Creates a new customer in the Rewards DB…" stays as is.
+
+     Verification
+
+     1. pip install -r requirements.txt, then ../../.venv/bin/python -c "import
+        tornado; print(tornado.version)" → 6.5.10.
+     2. ../../.venv/bin/pytest rewardsservice/tests -v → 8 passed and no
+        warnings summary.
+     3. -W error::DeprecationWarning run as an extra check that nothing else is
+        deprecated.
+     4. Confirm Tests.customers is gone/empty afterwards and Rewards is
+        unchanged.
+
+⏺ Bash(cd /Users/colinstead/Projects/urbn/platform-services-python-test/source/R
+      ewardsService && ../../.venv/bin/pip install -r requirements.txt 2>&1 |
+      tail -5; ../../…)
+  ⎿  (No output)
+
+⏺ Update(~/Projects/urbn/platform-services-python-test/README.md)
+  ⎿  Added 34 lines
+      29 
+      30  I also upgraded tornado to 6.5.10.
+      31 
+      32 +# Testing                                                      
+      33 +Tests run with `pytest` on your machine (not inside docker) aga
+         +inst a separate **`Tests`** MongoDB database, so the `Rewards` 
+         +database used by the service on `http://localhost:7050` is neve
+         +r touched. `conftest.py` starts its own copy of the service on 
+         +**port 7051** that is pointed at the `Tests` database.         
+      34 +                                                               
+      35 +### Prerequisites                                              
+      36 +* The MongoDB container is running with port `27017` published:
+         + `cd source/RewardsService && docker-compose up -d`. The servic
+         +e on port 7050 does not need to be running for the tests.      
+      37 +* A Python virtual environment with the pinned dependencies (an
+         + older tornado raises a `DeprecationWarning` on Python 3.14):  
+      38 +    ```                                                        
+      39 +    python -m venv .venv                                       
+      40 +    source .venv/bin/activate                                  
+      41 +    pip install -r source/RewardsService/requirements.txt      
+      42 +    ```                                                        
+      43 +* Port `7051` is free.                                         
+      44 +                                                               
+      45 +### Run the tests                                              
+      46 +```                                                            
+      47 +cd source/RewardsService                                       
+      48 +pytest rewardsservice/tests -v                                 
+      49 +```                                                            
+      50 +                                                               
+      51 +### What the tests do                                          
+      52 +* The `rewards` collection in the `Tests` database is reloaded 
+         +with the same data as `load_mongo_data.py` at the start of each
+         + run.                                                          
+      53 +* The `customers` collection is emptied before and after every 
+         +test, and dropped when the run finishes, so tests never see dat
+         +a from other tests or earlier runs. The `rewards` collection st
+         +ays in the `Tests` database.                                   
+      54 +                                                               
+      55 +### Configuration                                              
+      56 +Database settings are environment variables read in `source/Rew
+         +ardsService/database.py`:                                      
+      57 +                                                               
+      58 +| Variable | Default | Under pytest |                          
+      59 +| --- | --- | --- |                                            
+      60 +| `MONGO_HOST` | `mongodb` (docker compose service name) | `loc
+         +alhost` (override if Mongo is elsewhere) |                     
+      61 +| `MONGO_PORT` | `27017` | `27017` |                           
+      62 +| `DB_NAME` | `Rewards` | `Tests` (always) |                   
+      63 +                                                               
+      64 +If you have more than one container engine installed (for examp
+         +le Rancher Desktop and Docker Desktop), make sure the MongoDB t
+         +hat owns host port `27017` is the one you expect.              
+      65 +                                                               
+      66  # Endpoints
+      67  * `POST /customers`
+      68      * Creates a new customer in the Rewards DB under the custom
+          ers collection. Updates the Customer if the Customer already ex
+          ists.
+
+⏺ Update(README.md)
+  ⎿  Added 34 lines
+      51 
+      52  I also upgraded tornado to 6.5.10.
+      53 
+      54 +# Testing                                                      
+      55 +Tests run with `pytest` on your machine (not inside docker) aga
+         +inst a separate **`Tests`** MongoDB database, so the `Rewards` 
+         +database used by the service on `http://localhost:7050` is neve
+         +r touched. `conftest.py` starts its own copy of the service on 
+         +**port 7051** that is pointed at the `Tests` database.         
+      56 +                                                               
+      57 +### Prerequisites                                              
+      58 +* The MongoDB container is running with port `27017` published:
+         + `cd source/RewardsService && docker-compose up -d`. The servic
+         +e on port 7050 does not need to be running for the tests.      
+      59 +* A Python virtual environment with the pinned dependencies (an
+         + older tornado raises a `DeprecationWarning` on Python 3.14):  
+      60 +    ```                                                        
+      61 +    python -m venv .venv                                       
+      62 +    source .venv/bin/activate                                  
+      63 +    pip install -r source/RewardsService/requirements.txt      
+      64 +    ```                                                        
+      65 +* Port `7051` is free.                                         
+      66 +                                                               
+      67 +### Run the tests                                              
+      68 +```                                                            
+      69 +cd source/RewardsService                                       
+      70 +pytest rewardsservice/tests -v                                 
+      71 +```                                                            
+      72 +                                                               
+      73 +### What the tests do                                          
+      74 +* The `rewards` collection in the `Tests` database is reloaded 
+         +with the same data as `load_mongo_data.py` at the start of each
+         + run.                                                          
+      75 +* The `customers` collection is emptied before and after every 
+         +test, and dropped when the run finishes, so tests never see dat
+         +a from other tests or earlier runs. The `rewards` collection st
+         +ays in the `Tests` database.                                   
+      76 +                                                               
+      77 +### Configuration                                              
+      78 +Database settings are environment variables read in `source/Rew
+         +ardsService/database.py`:                                      
+      79 +                                                               
+      80 +| Variable | Default | Under pytest |                          
+      81 +| --- | --- | --- |                                            
+      82 +| `MONGO_HOST` | `mongodb` (docker compose service name) | `loc
+         +alhost` (override if Mongo is elsewhere) |                     
+      83 +| `MONGO_PORT` | `27017` | `27017` |                           
+      84 +| `DB_NAME` | `Rewards` | `Tests` (always) |                   
+      85 +                                                               
+      86 +If you have more than one container engine installed (for examp
+         +le Rancher Desktop and Docker Desktop), make sure the MongoDB t
+         +hat owns host port `27017` is the one you expect.              
+      87 +                                                               
+      88  # Endpoints
+      89  * `POST /customers`
+      90      * Creates a new customer in the Rewards DB under the custom
+          ers collection. Updates the Customer if the Customer already ex
+          ists.
+
+⏺ Bash(../../.venv/bin/pytest rewardsservice/tests 2>&1 | tail -4;
+      ../../.venv/bin/python - <<'EOF'
+      from pymongo import MongoClient…)
+  ⎿  (No output)
+
+⏺ The warning is gone, and serve() wasn't the cause. I added the "Testing"
+  section to both READMEs. All 7 tests pass, including a run with -W
+  error::DeprecationWarning.
+
+  Why the warning showed
+
+  - When it fires: the warning comes from a module-level line in Tornado
+    (_BasePolicy = asyncio.DefaultEventLoopPolicy). It runs once, the first time
+    anything imports Tornado. pytest reports it against whichever test is
+    running then, which is why it appeared under test_get_customers. serve()
+    only uses asyncio.new_event_loop() and never touches the policy API.
+  - Why it happened here: the host .venv had Tornado 6.1 installed, while
+    requirements.txt pins 6.5.10. I read the Tornado source on GitHub for 6.5.10
+    and 6.6.1, and both load that code lazily, so the warning only appears if
+    you actually use AnyThreadEventLoopPolicy. The old 6.1 code warns on Python
+    3.14.
+
+  The fix
+
+  - I ran pip install -r requirements.txt in the .venv. That upgraded Tornado
+    from 6.1 to 6.5.10 and validators from 0.36.0 to the pinned 0.35.0.
+  - Not a breaking change. It only syncs the venv to versions the project
+    already declares, and the Docker image already builds with those. No code
+    changes were needed in conftest.py or serve().
+  - Your own setup: anyone with an older venv needs the same pip install -r,
+    which the README now says.
+  - After the run, Tests holds only rewards (the customers collection was
+    dropped). The Rewards DB on the same Mongo is unchanged.
+
+  README changes
+
+  I added a # Testing section to README.md and source/RewardsService/README.md,
+  between "Solution" and "Endpoints". It covers:
+  - why a separate Tests DB and port 7051 are used,
+  - prerequisites (Mongo with 27017 published, the venv with pinned
+    requirements, port 7051 free),
+  - the run command,
+  - how rewards is seeded and customers is cleaned up,
+  - a table of the env vars (MONGO_HOST, MONGO_PORT, DB_NAME) with their
+    defaults and the values pytest uses,
+  - the warning about running more than one container engine.
+
+  I also left in the note about Rancher Desktop and Docker Desktop each
+  publishing port 27017. Delete it if you don't want it in the README.
+
+  I left alone the changes you made on disk to AI_USAGE.md, the handlers and the
+  removed test_connection.
