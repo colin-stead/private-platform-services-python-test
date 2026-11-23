@@ -24,7 +24,44 @@
 
 Setup stays the same with the following packages added to [requirements.txt](requirements.txt)
 * `validators 0.35.0` for customer email validation without a need for regex. In a real setting this could be used for initial validation but ultimately a confirmation email would need to be sent to the user to validate the email.
-* `pytest 9.2.0` for unit testing
+* `pytest 9.2.0` for unit testing.
+* `requests 2.34.2` for hitting endpoints in pytest.
+
+I also upgraded tornado to 6.5.10.
+
+# Testing
+Tests run with `pytest` on your machine (not inside docker) against a separate **`Tests`** MongoDB database, so the `Rewards` database used by the service on `http://localhost:7050` is never touched. `conftest.py` starts its own copy of the service on **port 7051** that is pointed at the `Tests` database.
+
+### Prerequisites
+* The MongoDB container is running with port `27017` published: `cd source/RewardsService && docker-compose up -d`. The service on port 7050 does not need to be running for the tests.
+* A Python virtual environment with the pinned dependencies (an older tornado raises a `DeprecationWarning` on Python 3.14):
+    ```
+    python -m venv .venv
+    source .venv/bin/activate
+    pip install -r source/RewardsService/requirements.txt
+    ```
+* Port `7051` is free.
+
+### Run the tests
+```
+cd source/RewardsService
+pytest rewardsservice/tests -v
+```
+
+### What the tests do
+* The `rewards` collection in the `Tests` database is reloaded with the same data as `load_mongo_data.py` at the start of each run.
+* The `customers` collection is emptied before and after every test, and dropped when the run finishes, so tests never see data from other tests or earlier runs. The `rewards` collection stays in the `Tests` database.
+
+### Configuration
+Database settings are environment variables read in `source/RewardsService/database.py`:
+
+| Variable | Default | Under pytest |
+| --- | --- | --- |
+| `MONGO_HOST` | `mongodb` (docker compose service name) | `localhost` (override if Mongo is elsewhere) |
+| `MONGO_PORT` | `27017` | `27017` |
+| `DB_NAME` | `Rewards` | `Tests` (always) |
+
+If you have more than one container engine installed (for example Rancher Desktop and Docker Desktop), make sure the MongoDB that owns host port `27017` is the one you expect.
 
 # Endpoints
 * `POST /customers`
@@ -45,11 +82,11 @@ Setup stays the same with the following packages added to [requirements.txt](req
     * Example 409 Response:
         ```
         {
-            "message": "Cannot create Customer. Customer with email: colin@gmail.com already exists.",
+            "message": "Cannot create Customer. Customer with email: colin@urbn.com already exists.",
             "meta": {
                 "message": "Use the PUT method to update the Customer's rewards.",
                 "method": "PUT",
-                "url": "/customers/colin@gmail.com"
+                "url": "/customers/colin@urbn.com"
             }
         }
         ```
@@ -75,7 +112,7 @@ Setup stays the same with the following packages added to [requirements.txt](req
         ```
         [
             {
-                "email": "jackie@gmail.com",
+                "email": "jackie@urbn.com",
                 "nextRewardTier": null,
                 "nextRewardTierProgress": 0.99,
                 "rewardPoints": 1000,
@@ -83,7 +120,7 @@ Setup stays the same with the following packages added to [requirements.txt](req
                 "rewardTierName": "50% off purchase"
             },
             {
-                "email": "colin@gmail.com",
+                "email": "colin@urbn.com",
                 "nextRewardTier": "B",
                 "nextRewardTierProgress": 0.13,
                 "rewardPoints": 113,
