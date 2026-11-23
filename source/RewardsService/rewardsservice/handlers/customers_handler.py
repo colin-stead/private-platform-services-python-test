@@ -33,6 +33,18 @@ def _validate_customers_request(data):
     """
     validation_errors = {}
 
+    existing_customer = DB.customers.find_one({"email": data["email"]})
+
+    if existing_customer:
+        return {
+            "message": f"Cannot create Customer. Customer with email: {data['email']} already exists.",
+            "meta": {
+                "message": "Use the PUT method to update the Customer's rewards.",
+                "method": "PUT",
+                "url": f"/customers/{data['email']}" # TODO: Implement PUT method.
+            }
+        }
+
     # Validate email, update message + errors array if invalid
     if not validators.email(data["email"]):
         validation_errors["message"] = "Invalid email."
@@ -151,6 +163,12 @@ class CustomersHandler(BaseHandler):
 
         # Validate the request
         validated = _validate_customers_request(customer_data)
+
+        # Return 409 CONFLICT if the customer exists
+        if 'meta' in validated.keys():
+            self.set_status(409)
+            self.write(validated)
+            return
 
         # Return 422 if the errors exist in the valdated data
         if 'errors' in validated.keys():
