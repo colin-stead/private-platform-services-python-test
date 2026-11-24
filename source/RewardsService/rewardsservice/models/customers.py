@@ -145,13 +145,6 @@ class Customer:
         sort_order = DESCENDING if filters["sort"][0] == '-' else ASCENDING
         sort = filters["sort"] if sort_order == ASCENDING else filters["sort"][1:]
 
-        # page = int(filters["page"]) if filters["page"] and filters["page"].isdigit() else 1
-        # per_page = int(filters["perPage"]) if filters["perPage"] and filters["perPage"].isdigit() else 10
-
-        print(filters["page"])
-        print(filters["perPage"])
-
-        # skip = (page - 1) * per_page
         query = (
             self._collection.find(query_params, {"_id": 0})
                 .sort(sort, sort_order)
