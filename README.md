@@ -66,6 +66,14 @@ If you have more than one container engine installed (for example Rancher Deskto
 # Endpoints
 * `POST /customers`
     * Creates a new customer in the Rewards DB under the customers collection. 409s if the customer exists
+    * Request Body accepts:
+        * `email` - a string, the customers email
+        * `orderTotal` - a number with no more than 2 digits after the decimal. A monetary value. No negatives
+    * Request Body Example:
+        {
+            "email": "colin@urbn.com",
+            "orderTotal": 200.98
+        }
     * Response Codes 201, 409, and 422
     * 422 reasons:
         * Invalid email (error_code: 001)
@@ -184,9 +192,52 @@ If you have more than one container engine installed (for example Rancher Deskto
         }
         ```
 * `PUT /customers/{customer_email}`
+    * Update a customer from the database given their email
+    * Request Body accepts:
+        * `email` - a string, the customers email
+        * `orderTotal` - a number with no more than 2 digits after the decimal. A monetary value. Negatives are allowed
+    * Request Body Example:
+        ```
+        {
+            "email": "colin@urbn.com",
+            "orderTotal": 200.98
+        }
+        ```
+    * Response codes 200, 404, 422
+    * Example 200 Response:
+        ```
+        {
+            "email": "colin@gmail.com",
+            "nextRewardTier": "B",
+            "nextRewardTierProgress": 0.13,
+            "rewardPoints": 313,
+            "rewardTier": "C",
+            "rewardTierName": "15% off purchase"
+        }
+        ```
+    * Example 404 Response:
+        ```
+        {
+            "error": "404 Not Found",
+            "message": "Customer not found"
+        }
+        ```
+    * Example 422 Response:
+    ```
+    {
+        "message": "Invalid monetary value.",
+        "error_code": "003",
+        "errors": {
+            "orderTotal": [
+                "The monetary value is invalid. Round to nearest cent."
+            ]
+        }
+    }
+    ```
 
 # Assumptions & Tradeoffs
-* On the "Create Customer" endpoint `POST /customers` I assumed we wouldn't want duplicate customers with the same IDs. So I added a 409 response and another endpoint to update customer rewards `PUT /customers/{customer_email}`. This follows best practices in API design.
+* On the "Create Customer" endpoint `POST /customers` I assumed we wouldn't want duplicate customers with the same emails. So I added a 409 response and another endpoint to update customer rewards `PUT /customers/{customer_email}`. This follows best practices in API design.
 * I assumed "No more rewards can be earned" also meant there's a cap to reward points a customer can earn. So for this project, once a customer hits the "J Tier", they can no longer earn more points and are capped at 1000. The POST/PUT endpoints will still return 200 OK responses but the rewards data will not change.
+* I assumed rewardPoints must be >= 0.
 * On the "Get Customer Details" endpoint `GET /customers/{customer_email}` I'm not a fan of passing an email directly to the URL. In a production setting I'd opt for an ID key.
 * Nothing was in the spec on authentication. So I didn't set up any API Keys or User accounts. In a production setting these are things that would be added.
