@@ -1,13 +1,9 @@
 """
-Request handler for multiple customers.
+Data application layer for Customers.
 
-GET /customers
-GET /customers/{customer_email}
-POST /customers
+Handles actions against Customers collection.
 """
 import math
-import pymongo
-
 import database
 
 from pymongo import ASCENDING, DESCENDING
@@ -22,7 +18,6 @@ class Customer:
     """
     A model to represent a Customer document
     """
-
     def __init__(self):
         self._client = database.get_client()
         self._db = database.get_db()
@@ -68,6 +63,7 @@ class Customer:
                 else validated_data["orderTotal"]
             )
         )
+
         if total_points < MINIMUM_POINTS:
             total_points = MINIMUM_POINTS
 
@@ -90,6 +86,7 @@ class Customer:
             # If the user has reached the top tier, there will be no next reward to earn or progress to calculate.
             current_reward, next_reward = (rewards[0], rewards[1]) if len(rewards) > 1 else (rewards[0], None)
 
+        # Calculate percentage (decimal to hundredths place) from next reward
         next_tier_progress = round(1 - ((next_reward["points"] - total_points) / 100), 2) if next_reward else 0
 
         return {
@@ -113,7 +110,7 @@ class Customer:
             rewards (dict): The data from _build_customer_rewards for the response object
         
         See Also:
-            _build_customer_rewards() (line 34)
+            _build_customer_rewards() (line 31)
         """
         rewards = self._build_customer_rewards(data)
 
@@ -152,6 +149,7 @@ class Customer:
             "rewardPoints",
         ]
 
+        # Pull query filters from pagination
         query_params = {key: value for key, value in filters.items() if key in accepted_arguments}
 
         sort_order = DESCENDING if filters["sort"][0] == '-' else ASCENDING
