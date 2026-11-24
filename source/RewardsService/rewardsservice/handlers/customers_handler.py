@@ -40,6 +40,20 @@ def _validate_customers_request(data):
         validation_errors["message"] = "Invalid email."
         validation_errors["errors"] = {"email": ["The given email is invalid."]}
 
+    if data['orderTotal'] < 0:
+        if "message" in validation_errors.keys():
+            validation_errors["message"] += " and 1 more."
+        else:
+            validation_errors["message"] = "Invalid monetary value."
+
+        error_row = {"orderTotal": ["The monetary value is invalid. Must be positive"]}
+        validation_errors["errors"] = (
+            validation_errors["errors"] | error_row
+            if "errors" in validation_errors.keys()
+            else error_row
+        )
+        return validation_errors
+
     # Format the order total to make sure it's a valid monetary value. Only 2 decimal places, round down any trailing decimals.
     total_to_format = (math.floor(data['orderTotal'] * 100) / 100)
     formatted_order_total = f"{total_to_format:.2f}"
@@ -51,7 +65,7 @@ def _validate_customers_request(data):
         else:
             validation_errors["message"] = "Invalid monetary value."
 
-        error_row = {"orders": ["The monetary value is invalid. Round to nearest cent."]}
+        error_row = {"orderTotal": ["The monetary value is invalid. Round to nearest cent."]}
         validation_errors["errors"] = (
             validation_errors["errors"] | error_row
             if "errors" in validation_errors.keys()
