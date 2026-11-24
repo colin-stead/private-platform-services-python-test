@@ -15,6 +15,7 @@ from pymongo import MongoClient
 os.environ.setdefault("MONGO_HOST", "mongodb")
 os.environ.setdefault("MONGO_PORT", "27017")
 os.environ.setdefault("DB_NAME", "Rewards")
+os.environ.setdefault("URI", "http://localhost:7050")
 
 _client = None
 

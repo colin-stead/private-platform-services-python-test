@@ -8,17 +8,20 @@ POST /customers
 import json
 import math
 import validators
+import os
 
 import database
 
-from pymongo import errors
+from pymongo import errors, DESCENDING, ASCENDING
 from .base_handler import BaseHandler
 from models.customers import Customer
+from urllib.parse import urlencode
 
 MINIMUM_REWARDS = 100
 MAXIMUM_REWARDS = 1000
 
 DB = database.get_db()
+CUSTOMER = Customer()
 
 def _validate_customers_request(data):
     """
@@ -93,25 +96,123 @@ def _validate_customers_post_request(data):
     # Return validated data
     return data
 
+def _build_filters(handler):
+    """
+    Build filters for query/pagination
+
+    Parameters:
+        handler (CustomersHandler): The handler object so we can get argument key values
+    
+    Returns:
+        dict: The arguments fitting accepted filters, and pagination fields
+    """
+    # Only accepting two arguments
+    accepted_arguments = [
+        "rewardTier",
+        "rewardPoints",
+    ]
+
+    accepted_sorts = [
+        "-_id",
+        "_id",
+        "-rewardPoints",
+        "rewardPoints",
+        "-rewardTier",
+        "rewardTier",
+        "-nextRewardTierProgress",
+        "nextRewardTierProgress"
+    ]
+
+    # Gather arguments
+    arguments = handler.request.query_arguments
+    page = handler.get_argument("page", default=1)
+    perPage = handler.get_argument("perPage", default=10)
+    sort = handler.get_argument("sort", default="-_id")
+
+
+    pagination_fields = {
+        'sort': sort if sort in accepted_sorts else "-_id",
+        'page': int(page) if "page" in arguments.keys() and page.isdigit() else 1,
+        'perPage': int(perPage) if "perPage" in arguments.keys() and perPage.isdigit() else 10
+    }
+
+    arguments = {}
+    for key in handler.request.arguments.keys():
+        if "[" in key:
+            start = key.index("[")
+            end = key.index("]")
+            arg_key = key[:start]
+        
+            if arg_key in accepted_arguments:
+                value = handler.get_argument(key, default=None)
+                if (value.isdigit()): # Store with gt/gte/lt/lte args
+                    arguments[arg_key] = {f"${key[(start + 1):end]}": int(value)}
+        elif key in accepted_arguments:
+            value = handler.get_argument(key, default=None)
+            if (value.isdigit()): # Convert to int
+                arguments[key] = int(value)
+            elif value: # Only except args with values, ignore empty fields
+                arguments[key] = value
+
+    return {
+        "arguments": arguments,
+        "pagination_fields": pagination_fields
+    }
+
 class CustomersHandler(BaseHandler):
 
     async def get(self, email):
         """
-        Get all the customers
+        Get all the customers.
 
         Supports endpoints: GET /customers, GET /customers/{customer_email}
-        TODO: Add filtering, pagination, Support for single customer
+
+        Parameters:
+            email (str): The email of the customer to find (OPTIONAL)
+
+        See also:
+            __build_filters(handler) (line:99)
+            models.customers.get(<dict>) (models.customers:line 128)
         """
         # Send json of customers if they're in the db, otherwise empty 200 response
         try:
             if not email:
-                customers = list(DB.customers.find({}, {"_id": 0}))
-                self.write(json.dumps(customers, indent=4))
+                filters = _build_filters(self)
+                arguments, pagination_fields = filters["arguments"], filters["pagination_fields"]
+
+                customers = CUSTOMER.get(arguments | pagination_fields)
+                count = customers["count"]
+
+                # Build pagination data
+                prev_pagination = {}
+                next_pagination = {}
+                for key, value in pagination_fields.items():
+                    if (key == "page"):
+                        prev_pagination[key] = value - 1
+                        next_pagination[key] = value + 1
+                        continue
+
+                    prev_pagination[key] = value
+                    next_pagination[key] = value
+
+                page_count = (count + pagination_fields["perPage"] - 1) // pagination_fields["perPage"]
+
+                self.write({
+                    "data": customers["data"],
+                    "meta": {
+                        "page": pagination_fields["page"],
+                        "perPage": pagination_fields["perPage"],
+                        "count": count,
+                        "pages": page_count,
+                        "prev": None if prev_pagination["page"] == 0 else f"{os.getenv('URI')}/customers?{urlencode(arguments | prev_pagination)}",
+                        "next": None if next_pagination["page"] > page_count else f"{os.getenv('URI')}/customers?{urlencode(arguments | next_pagination)}"
+                    }
+                })
             else:
                 # Implement email logic here, for now return first where email is email
-                customer = Customer()
-                customer = customer.find(email)
+                customer = CUSTOMER.find(email)
 
+                # Return 404 (NOT FOUND) if customer isn't found 
                 if customer == None:
                     self.set_status(404)
                     self.write({
@@ -127,7 +228,7 @@ class CustomersHandler(BaseHandler):
 
     async def post(self, _):
         """
-        Create or update a customer with customer rewards. Upsert the data into the db.
+        Create a customer with customer rewards.
 
         Endpoint:
             POST /customers
@@ -154,8 +255,7 @@ class CustomersHandler(BaseHandler):
             return
 
         # Create a new customer
-        customer = Customer()
-        response = Customer.save(customer, validated)
+        response = CUSTOMER.save(validated)
 
         # Set the status to 201 return data
         self.set_status(201)

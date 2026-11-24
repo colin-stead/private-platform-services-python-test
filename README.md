@@ -107,31 +107,55 @@ If you have more than one container engine installed (for example Rancher Deskto
 
 * `GET /customers`
     * Gets a list of all the customers that are in the database.
+    * Accepts Following Filters:
+        * sort: The key to sort on. ACCEPTED VALUES: [`-_id`, `_id`, `-rewardPoints`, `rewardPoints`, `-rewardTier`, `rewardTier`, `-nextRewardTierProgress`, `nextRewardTierProgress`]
+        * rewardTier: Char ranging from A - J. Must be uppercase. Anything else will return nothing.
+        * rewardPoints: The rewardPoint value. This can also be passed as `rewardPoints[lt]` (for less than a value), `rewardPoints[gt]` (for greater than a value), `rewardPoints[lte]` (for less than or equal to a value), `rewardPoints[gte]` (for greater than or equal to a value) or whatever other comparison you'd like to make between the braces.
     * Response Codes 200
     * Example 200 Response (with data in DB):
         ```
-        [
-            {
-                "email": "jackie@urbn.com",
-                "nextRewardTier": null,
-                "nextRewardTierProgress": 0.99,
-                "rewardPoints": 1000,
-                "rewardTier": "J",
-                "rewardTierName": "50% off purchase"
-            },
-            {
-                "email": "colin@urbn.com",
-                "nextRewardTier": "B",
-                "nextRewardTierProgress": 0.13,
-                "rewardPoints": 113,
-                "rewardTier": "A",
-                "rewardTierName": "5% off purchase"
+        {
+            "data": [
+                {
+                    "email": "dawn@urbn.com",
+                    "nextRewardTier": "I",
+                    "nextRewardTierProgress": 0.49,
+                    "rewardPoints": 849,
+                    "rewardTier": "H",
+                    "rewardTierName": "40% off purchase"
+                },
+                {
+                    "email": "sam@urbn.com",
+                    "nextRewardTier": "I",
+                    "nextRewardTierProgress": 0.45,
+                    "rewardPoints": 845,
+                    "rewardTier": "H",
+                    "rewardTierName": "40% off purchase"
+                }
+            ],
+            "meta": {
+                "page": 2,
+                "perPage": 2,
+                "count": 11,
+                "pages": 6,
+                "prev": "http://localhost:7050/customers?sort=-_id&page=1&perPage=2",
+                "next": "http://localhost:7050/customers?sort=-_id&page=3&perPage=2"
             }
-        ]
+        }
         ```
     * Example 200 Response (without data in DB):
         ```
-        []
+        {
+            "data": [],
+            "meta": {
+                "page": 1,
+                "perPage": 10,
+                "count": 0,
+                "pages": 0,
+                "prev": null,
+                "next": null
+            }
+        }
         ```
 * `GET /customers/{customer_email}`
     * Get a customer from the database with their email
@@ -160,3 +184,4 @@ If you have more than one container engine installed (for example Rancher Deskto
 * On the "Create Customer" endpoint `POST /customers` I assumed we wouldn't want duplicate customers with the same IDs. So I added a 409 response and another endpoint to update customer rewards `PUT /customers/{customer_email}`. This follows best practices in API design.
 * I assumed "No more rewards can be earned" also meant there's a cap to reward points a customer can earn. So for this project, once a customer hits the "J Tier", they can no longer earn more points and are capped at 1000. The POST/PUT endpoints will still return 200 OK responses but the rewards data will not change.
 * On the "Get Customer Details" endpoint `GET /customers/{customer_email}` I'm not a fan of passing an email directly to the URL. In a production setting I'd opt for an ID key.
+* Nothing was in the spec on authentication. So I didn't set up any API Keys or User accounts. In a production setting these are things that would be added.

@@ -10,7 +10,7 @@ import pymongo
 
 import database
 
-from pymongo import MongoClient
+from pymongo import ASCENDING, DESCENDING
 
 CUSTOMER_COLLECTION = "customers"
 REWARDS_COLLECTION = "rewards"
@@ -124,3 +124,38 @@ class Customer:
             Any | None: The Customer document or Nothing
         """
         return self._collection.find_one({"email": email}, {"_id": 0})
+
+    def get(self, filters):
+        """
+        Gets a list of customers and a count according to the filters provided
+
+        Parameters:
+            query_params (dict): The parameters we are filtering on
+
+        Returns:
+            dict: A dictionary containing the data from the query and the count
+        """
+        accepted_arguments = [
+            "rewardTier",
+            "rewardPoints",
+        ]
+
+        query_params = {key: value for key, value in filters.items() if key in accepted_arguments}
+
+        sort_order = DESCENDING if filters["sort"][0] == '-' else ASCENDING
+        sort = filters["sort"] if sort_order == ASCENDING else filters["sort"][1:]
+
+        query = (
+            self._collection.find(query_params, {"_id": 0})
+                .sort(sort, sort_order)
+                .skip((filters["page"] - 1) * filters["perPage"])
+                .limit(filters["perPage"])
+        )
+
+        customers = list(query)
+        count = self._collection.count_documents(query_params)
+
+        return {
+            'data': customers,
+            'count': count
+        }
