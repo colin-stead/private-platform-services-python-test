@@ -45,7 +45,7 @@ rewardsservice/tests/customers_test.py::test_get_customers
 First diagnose why the warning is showing and the changes required to fix it. Let me know if it is a breaking change or not and what updates we would need to make to the README files." 
 
 #### Exported File:
-(claude-test-setup-prompt-urbn.txt)[claude-test-setup-prompt-urbn.txt]
+(claude-test-setup-prompt-urbn.txt)[https://github.com/colin-stead/private-platform-services-python-test/blob/master/claude-test-setup-prompt-urbn.txt]
 ## How you used them
 Testing database configuration and pytest warning cleanup
 
