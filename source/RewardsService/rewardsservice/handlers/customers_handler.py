@@ -145,11 +145,13 @@ def _build_filters(handler):
         
             if arg_key in accepted_arguments:
                 value = handler.get_argument(key, default=None)
-                if (value.isdigit()):
+                if (value.isdigit()): # Store with gt/gte/lt/lte args
                     arguments[arg_key] = {f"${key[(start + 1):end]}": int(value)}
         elif key in accepted_arguments:
             value = handler.get_argument(key, default=None)
-            if (value.isdigit()):
+            if (value.isdigit()): # Convert to int
+                arguments[key] = int(value)
+            elif value: # Only except args with values, ignore empty fields
                 arguments[key] = value
 
     return {
