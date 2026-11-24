@@ -149,6 +149,20 @@ def test_create_customer_with_invalid_email_fails_validation(base_url):
     response = requests.post(f"{base_url}/customers", json=payload)
     assert response.status_code == 422
 
+def test_create_customer_with_negative_number_fails_validation(base_url):
+    """
+    Test POST /customers endpoint
+
+    - An negative number should 422
+    """
+    payload = {
+        "email": "tester.mail.com",
+        "orderTotal": -1.00
+    }
+
+    response = requests.post(f"{base_url}/customers", json=payload)
+    assert response.status_code == 422
+
 def test_create_customer_with_invalid_order_total_fails_validation(base_url):
     """
     Test POST /customers endpoint

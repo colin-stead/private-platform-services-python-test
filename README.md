@@ -65,8 +65,12 @@ If you have more than one container engine installed (for example Rancher Deskto
 
 # Endpoints
 * `POST /customers`
-    * Creates a new customer in the Rewards DB under the customers collection. Updates the Customer if the Customer already exists.
+    * Creates a new customer in the Rewards DB under the customers collection. 409s if the customer exists
     * Response Codes 201, 409, and 422
+    * 422 reasons:
+        * Invalid email (error_code: 001)
+        * Negative orderTotal (error_code: 002)
+        * Invalid orderTotal (error_code: 003)
     * Example 201 Response:
         ```
         {
@@ -93,12 +97,13 @@ If you have more than one container engine installed (for example Rancher Deskto
      * Example 422 Response:
         ```
         {
-            "message": "Invalid email. and 1 more.",
+            "message": "Invalid email and 1 more.",
+            "error_code": "001",
             "errors": {
                 "email": [
                     "The given email is invalid."
                 ],
-                "orders": [
+                "orderTotal": [
                     "The monetary value is invalid. Round to nearest cent."
                 ]
             }

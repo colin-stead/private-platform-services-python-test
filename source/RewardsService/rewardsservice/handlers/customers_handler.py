@@ -38,7 +38,24 @@ def _validate_customers_request(data):
     # Validate email, update message + errors array if invalid
     if not validators.email(data["email"]):
         validation_errors["message"] = "Invalid email."
+        validation_errors["error_code"] = "001"
         validation_errors["errors"] = {"email": ["The given email is invalid."]}
+
+    if data['orderTotal'] < 0:
+        if "message" in validation_errors.keys():
+            validation_errors["message"] = f"{validation_errors['message'][:-1]} and 1 more."
+        else:
+            validation_errors["message"] = "Invalid monetary value."
+            validation_errors["error_code"] = "002"
+
+
+        error_row = {"orderTotal": ["The monetary value is invalid. Must be positive"]}
+        validation_errors["errors"] = (
+            validation_errors["errors"] | error_row
+            if "errors" in validation_errors.keys()
+            else error_row
+        )
+        return validation_errors
 
     # Format the order total to make sure it's a valid monetary value. Only 2 decimal places, round down any trailing decimals.
     total_to_format = (math.floor(data['orderTotal'] * 100) / 100)
@@ -47,11 +64,12 @@ def _validate_customers_request(data):
     # Validate orderTotal, update message + errors array if invalid. Passed value should be same length as formatted.
     if len(str(data["orderTotal"])) > len(formatted_order_total):
         if "message" in validation_errors.keys():
-            validation_errors["message"] += " and 1 more."
+            validation_errors["message"] = f"{validation_errors['message'][:-1]} and 1 more."
         else:
             validation_errors["message"] = "Invalid monetary value."
+            validation_errors["error_code"] = "003"
 
-        error_row = {"orders": ["The monetary value is invalid. Round to nearest cent."]}
+        error_row = {"orderTotal": ["The monetary value is invalid. Round to nearest cent."]}
         validation_errors["errors"] = (
             validation_errors["errors"] | error_row
             if "errors" in validation_errors.keys()
