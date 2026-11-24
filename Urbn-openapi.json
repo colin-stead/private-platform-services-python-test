@@ -60,9 +60,6 @@
   },
   "servers": [
     {
-      "url": "https://echo.hoppscotch.io"
-    },
-    {
       "url": "http://localhost:7050"
     }
   ]
