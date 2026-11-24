@@ -132,28 +132,48 @@ If you have more than one container engine installed (for example Rancher Deskto
     * Response Codes 200
     * Example 200 Response (with data in DB):
         ```
-        [
-            {
-                "email": "jackie@urbn.com",
-                "nextRewardTier": null,
-                "nextRewardTierProgress": 0.99,
-                "rewardPoints": 1000,
-                "rewardTier": "J",
-                "rewardTierName": "50% off purchase"
-            },
-            {
-                "email": "colin@urbn.com",
-                "nextRewardTier": "B",
-                "nextRewardTierProgress": 0.13,
-                "rewardPoints": 113,
-                "rewardTier": "A",
-                "rewardTierName": "5% off purchase"
+        {
+            "data": [
+                {
+                    "email": "dawn@urbn.com",
+                    "nextRewardTier": "I",
+                    "nextRewardTierProgress": 0.49,
+                    "rewardPoints": 849,
+                    "rewardTier": "H",
+                    "rewardTierName": "40% off purchase"
+                },
+                {
+                    "email": "sam@urbn.com",
+                    "nextRewardTier": "I",
+                    "nextRewardTierProgress": 0.45,
+                    "rewardPoints": 845,
+                    "rewardTier": "H",
+                    "rewardTierName": "40% off purchase"
+                }
+            ],
+            "meta": {
+                "page": 2,
+                "perPage": 2,
+                "count": 11,
+                "pages": 6,
+                "prev": "http://localhost:7050/customers?sort=-_id&page=1&perPage=2",
+                "next": "http://localhost:7050/customers?sort=-_id&page=3&perPage=2"
             }
-        ]
+        }
         ```
     * Example 200 Response (without data in DB):
         ```
-        []
+        {
+            "data": [],
+            "meta": {
+                "page": 1,
+                "perPage": 10,
+                "count": 0,
+                "pages": 0,
+                "prev": null,
+                "next": null
+            }
+        }
         ```
 * `GET /customers/{customer_email}`
     * Get a customer from the database with their email
