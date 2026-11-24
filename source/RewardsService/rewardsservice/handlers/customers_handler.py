@@ -222,8 +222,8 @@ class CustomersHandler(BaseHandler):
 
         See also:
             - _build_filters(handler) (line 149)
-            - models.customers.get(<dict>) (models.customers:line 140)
-            - models.customers.find(<str>) (models.customers:line 128)
+            - models.customers.get(<dict>) (models.customers:line 137)
+            - models.customers.find(<str>) (models.customers:line 125)
         """
         # Send json of customers if they're in the db, otherwise empty 200 response
         try:
@@ -287,7 +287,7 @@ class CustomersHandler(BaseHandler):
 
         See Also:
             - _validate_customers_post_request(<dict>) (line 100)
-            - models.customers.save(<dict>) (models.customers:line 104)
+            - models.customers.save(<dict>) (models.customers:line 101)
         """
         customer_data = json.loads(self.request.body)
 
@@ -322,7 +322,7 @@ class CustomersHandler(BaseHandler):
 
         See Also:
             - _validate_customers_put_request(<dict>) (line 69)
-            - models.customers.save(<dict>) (models.customers:line 92)
+            - models.customers.save(<dict>) (models.customers:line 101)
         """
         customer_data = json.loads(self.request.body)
 
