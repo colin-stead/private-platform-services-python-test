@@ -79,6 +79,56 @@ def _validate_customers_request(data):
     # Return 422 payload
     return validation_errors if len(validation_errors) > 0 else data
 
+def _validate_customers_put_request(data):
+    """
+    Validate request payloads for the update customer endpoint.
+
+    Can accept a negative value to decrease points, points will be capped at a minimum of 0 and maximum of 1000
+
+    Parameters:
+        data (dict): The request body in a single dictionary
+
+    Returns:
+        dict: Error code dict to use for response or validated data to update customer document with.
+    """
+    # Check if incoming customer exists
+    existing_customer = DB.customers.find_one({"email": data["email"]})
+    if existing_customer == None:
+        return {
+            "error": "404 Not Found",
+            "message": "Customer not found"
+        }
+    
+    validation_errors = {}
+
+    # Validate email, update message + errors array if invalid
+    if not validators.email(data["email"]):
+        validation_errors["message"] = "Invalid email."
+        validation_errors["error_code"] = "001"
+        validation_errors["errors"] = {"email": ["The given email is invalid."]}
+
+    # Format the order total to make sure it's a valid monetary value. Only 2 decimal places, round down any trailing decimals if > 0, otherwise round up.
+    total_to_format = (math.floor(data['orderTotal'] * 100) / 100) if data["orderTotal"] > 0 else (math.ceil(data['orderTotal'] * 100) / 100)
+    formatted_order_total = f"{total_to_format:.2f}"
+    
+    # Validate orderTotal, update message + errors array if invalid. Passed value should be same length as formatted.
+    if len(str(data["orderTotal"])) > len(formatted_order_total):
+        if "message" in validation_errors.keys():
+            validation_errors["message"] = f"{validation_errors['message'][:-1]} and 1 more."
+        else:
+            validation_errors["message"] = "Invalid monetary value."
+            validation_errors["error_code"] = "003"
+
+        error_row = {"orderTotal": ["The monetary value is invalid. Round to nearest cent."]}
+        validation_errors["errors"] = (
+            validation_errors["errors"] | error_row
+            if "errors" in validation_errors.keys()
+            else error_row
+        )
+
+    # Return 422 payload
+    return validation_errors if len(validation_errors) > 0 else data
+
 def _validate_customers_post_request(data):
     """
     Validate customers request for POST Method
@@ -252,7 +302,7 @@ class CustomersHandler(BaseHandler):
             POST /customers
 
         See Also:
-            - _validate_customers_request(<dict>) (line 18)
+            - _validate_customers_request(<dict>) (line 133)
             - models.customers.save(<dict>) (models.customers:line 92)
         """
         customer_data = json.loads(self.request.body)
@@ -279,3 +329,37 @@ class CustomersHandler(BaseHandler):
         self.set_status(201)
         self.write(json.dumps(response, default=str))
 
+    async def put(self, _):
+        """
+        Update a customer with customer rewards.
+
+        Endpoint:
+            PUT /customers
+
+        See Also:
+            - _validate_customers_put_request(<dict>) (line 82)
+            - models.customers.save(<dict>) (models.customers:line 92)
+        """
+        customer_data = json.loads(self.request.body)
+
+        # Validate the request
+        validated = _validate_customers_put_request(customer_data)
+
+        # Return 404 NOT FOUND if the customer doesn't
+        if 'error' in validated.keys():
+            self.set_status(404)
+            self.write(validated)
+            return
+
+        # Return 422 if the errors exist in the valdated data
+        if 'errors' in validated.keys():
+            self.set_status(422)
+            self.write(validated)
+            return
+
+        # Update the customer
+        response = CUSTOMER.save(validated)
+
+        # Set the status to 200 return data
+        self.set_status(200)
+        self.write(json.dumps(response, default=str))
