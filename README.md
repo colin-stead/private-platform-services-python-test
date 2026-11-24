@@ -34,18 +34,25 @@ Tests run with `pytest` on your machine (not inside docker) against a separate *
 
 ### Prerequisites
 * The MongoDB container is running with port `27017` published: `cd source/RewardsService && docker-compose up -d`. The service on port 7050 does not need to be running for the tests.
-* A Python virtual environment with the pinned dependencies (an older tornado raises a `DeprecationWarning` on Python 3.14):
-    ```
-    python -m venv .venv
-    source .venv/bin/activate
-    pip install -r source/RewardsService/requirements.txt
-    ```
+* From the root directory (directory just one step above source) run the following commands to create a Python virtual environment with the pinned dependencies (an older tornado raises a `DeprecationWarning` on Python 3.14):
+    * For MacOS
+        ```
+        python -m venv .venv
+        source .venv/bin/activate
+        pip install -r source/RewardsService/requirements.txt
+        ```
+    * For Windows
+        ```
+        python -m venv .venv
+        ./venv/Scripts/Activate.ps1
+        pip install -r source/RewardsService/requirements.txt
+        ```
 * Port `7051` is free.
 
-### Run the tests
+### Run the tests from inside the virtual environment
 ```
 cd source/RewardsService
-pytest rewardsservice/tests -v
+pytest
 ```
 
 ### What the tests do
