@@ -108,8 +108,8 @@ If you have more than one container engine installed (for example Rancher Deskto
     * Response Codes 201, 409, and 422
     * 422 reasons:
         * Invalid email (error_code: 001)
-        * Negative orderTotal (error_code: 002)
-        * Invalid orderTotal (error_code: 003)
+        * Invalid orderTotal (error_code: 002)
+        * Negative orderTotal (error_code: 003)
     * Example 201 Response:
         ```
         {
@@ -257,7 +257,7 @@ If you have more than one container engine installed (for example Rancher Deskto
     ```
     {
         "message": "Invalid monetary value.",
-        "error_code": "003",
+        "error_code": "002",
         "errors": {
             "orderTotal": [
                 "The monetary value is invalid. Round to nearest cent."
