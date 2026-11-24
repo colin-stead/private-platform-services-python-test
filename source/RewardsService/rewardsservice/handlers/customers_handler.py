@@ -72,8 +72,6 @@ def _validate_customers_put_request(data):
 
     Can accept a negative value to decrease points, points will be capped at a minimum of 0 and maximum of 1000
 
-    We don't need to 422 invalid emails, it will 404 because the user won't be found
-
     Parameters:
         data (dict): The request body in a single dictionary
 
@@ -81,7 +79,7 @@ def _validate_customers_put_request(data):
         dict: Error code dict to use for response or validated data to update customer document with.
     
     See Also:
-        - _validate_customers_request() (line 22)
+        - _validate_customers_request() (line 27)
     """
     # Check for 422 errors
     validated = _validate_customers_request(data)
@@ -110,7 +108,7 @@ def _validate_customers_post_request(data):
         dict: Error code dict to use for response or validated data to build customer document with.
 
     See Also:
-        - _validate_customers_request() (line 22)
+        - _validate_customers_request() (line 27)
     """
     # Check for 422 errors
     validated = _validate_customers_request(data)
@@ -288,7 +286,7 @@ class CustomersHandler(BaseHandler):
             POST /customers
 
         See Also:
-            - _validate_customers_post_request(<dict>) (line 102)
+            - _validate_customers_post_request(<dict>) (line 100)
             - models.customers.save(<dict>) (models.customers:line 104)
         """
         customer_data = json.loads(self.request.body)
@@ -323,7 +321,7 @@ class CustomersHandler(BaseHandler):
             PUT /customers
 
         See Also:
-            - _validate_customers_put_request(<dict>) (line 82)
+            - _validate_customers_put_request(<dict>) (line 69)
             - models.customers.save(<dict>) (models.customers:line 92)
         """
         customer_data = json.loads(self.request.body)
