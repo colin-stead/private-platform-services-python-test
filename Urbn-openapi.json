@@ -1,0 +1,69 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Urbn",
+    "description": "",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Get Rewards",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "operationId": "Get_Rewards"
+      }
+    },
+    "/customers": {
+      "get": {
+        "summary": "Get Customers",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "operationId": "Get_Customers",
+        "parameters": [
+          {
+            "name": "rewardTier",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "example": "A"
+          }
+        ]
+      },
+      "put": {
+        "summary": "Create Customer",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "operationId": "Create_Customer",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "email": "tester5@urbn.com",
+                "orderTotal": -51.98
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://echo.hoppscotch.io"
+    },
+    {
+      "url": "http://localhost:7050"
+    }
+  ]
+}
