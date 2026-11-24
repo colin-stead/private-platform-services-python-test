@@ -51,3 +51,5 @@ Testing database configuration and pytest warning cleanup
 
 ## What you changed or rejected
 Claude put the CLIENT config in the base_handler.py file. I changed that to be get_client() in database.py and moved client refrences in handlers/customer_handler.py to models/customer.py.
+
+I also changed the instructions for configuring a python virtual environment and running the tests in the venv.
