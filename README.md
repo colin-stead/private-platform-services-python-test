@@ -22,12 +22,12 @@
 
 # Solution
 
-Setup stays the same with the following packages added to [requirements.txt](requirements.txt)
+Setup for the [RewardsService](source/RewardsService/README.md) stays the same with the following packages added to [requirements.txt](source/RewardsService/requirements.txt)
 * `validators 0.35.0` for customer email validation without a need for regex. In a real setting this could be used for initial validation but ultimately a confirmation email would need to be sent to the user to validate the email.
 * `pytest 9.2.0` for unit testing.
 * `requests 2.34.2` for hitting endpoints in pytest.
 
-I also upgraded tornado to 6.5.10.
+I also upgraded `tornado` to `6.5.10`.
 
 # Testing
 Tests run with `pytest` on your machine (not inside docker) against a separate **`Tests`** MongoDB database, so the `Rewards` database used by the service on `http://localhost:7050` is never touched. `conftest.py` starts its own copy of the service on **port 7051** that is pointed at the `Tests` database.
@@ -249,3 +249,41 @@ If you have more than one container engine installed (for example Rancher Deskto
 * On the "Get Customer Details" endpoint `GET /customers/{customer_email}` I'm not a fan of passing an email directly to the URL. In a production setting I'd opt for an ID key.
 * Nothing was in the spec on authentication. So I didn't set up any API Keys or User accounts. In a production setting these are things that would be added.
 * I opted not to make a UI for this project. I had too much fun with the REST API and opted to improve it instead.
+
+# Manual Usage of API
+* I included json file called [Urbn-openapi.json](Urbn-openapi.json) in the root directory. You can import this file to [hoppscotch.io](https://hoppscotch.io/) or another REST Client that accepts the JSON file and test for yourself. Otherwise you can curl endpoints as you'd like.
+
+### curl GET /rewards
+```
+curl "http://localhost:7050/rewards"
+```
+
+### curl GET /customers
+For the generic /customers endpoint run
+```
+curl "http://localhost:7050/customers
+```
+
+To filter/paginate pass the params in place of {key} replace the key you want to filer on and in place of value replace the value you want for the filter
+```
+curl "http://localhost:7050/customers?" \
+    --url-query "{key}={value}"
+```
+Example:
+```
+curl "http://localhost:7050/customers" \
+    --url-query "rewardPoints[gt]=400" \
+    --url-query "sort=-rewardPoints"
+```
+
+### curl POST /customers
+```
+curl -X POST http://localhost:7050/customers \
+    -d '{"email": "colin@urbn.com", "orderTotal": 849.06}'
+```
+
+### curl PUT /customers
+```
+curl -X PUT http://localhost:7050/customers \
+    -d '{"email": "colin@urbn.com", "orderTotal": 849.06}'
+```

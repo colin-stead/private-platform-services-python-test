@@ -273,3 +273,41 @@ If you have more than one container engine installed (for example Rancher Deskto
 * On the "Get Customer Details" endpoint `GET /customers/{customer_email}` I'm not a fan of passing an email directly to the URL. In a production setting I'd opt for an ID key.
 * Nothing was in the spec on authentication. So I didn't set up any API Keys or User accounts. In a production setting these are things that would be added.
 * I opted not to make a UI for this project. I had too much fun with the REST API and opted to improve it instead.
+
+# Manual Usage of API
+* I included json file called [Urbn-openapi.json](Urbn-openapi.json) in the root directory. You can import this file to [hoppscotch.io](https://hoppscotch.io/) or another REST Client that accepts the JSON file and test for yourself. Otherwise you can curl endpoints as you'd like.
+
+### curl GET /rewards
+```
+curl "http://localhost:7050/rewards"
+```
+
+### curl GET /customers
+For the generic /customers endpoint run
+```
+curl "http://localhost:7050/customers
+```
+
+To filter/paginate pass the params in place of {key} replace the key you want to filer on and in place of value replace the value you want for the filter
+```
+curl "http://localhost:7050/customers?" \
+    --url-query "{key}={value}"
+```
+Example:
+```
+curl "http://localhost:7050/customers" \
+    --url-query "rewardPoints[gt]=400" \
+    --url-query "sort=-rewardPoints"
+```
+
+### curl POST /customers
+```
+curl -X POST http://localhost:7050/customers \
+    -d '{"email": "colin@urbn.com", "orderTotal": 849.06}'
+```
+
+### curl PUT /customers
+```
+curl -X PUT http://localhost:7050/customers \
+    -d '{"email": "colin@urbn.com", "orderTotal": 849.06}'
+```
