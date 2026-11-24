@@ -8,17 +8,20 @@ POST /customers
 import json
 import math
 import validators
+import os
 
 import database
 
-from pymongo import errors
+from pymongo import errors, DESCENDING, ASCENDING
 from .base_handler import BaseHandler
 from models.customers import Customer
+from urllib.parse import urlencode
 
 MINIMUM_REWARDS = 100
 MAXIMUM_REWARDS = 1000
 
 DB = database.get_db()
+CUSTOMER = Customer()
 
 def _validate_customers_request(data):
     """
@@ -105,20 +108,72 @@ class CustomersHandler(BaseHandler):
         # Send json of customers if they're in the db, otherwise empty 200 response
         try:
             if not email:
+                accepted_arguments = [
+                    "rewardTier",
+                    "rewardPoints",
+                ]
+
                 arguments = self.request.query_arguments
                 pagination_fields = {
-                    'sort': arguments["sort"] if "sort" in arguments.keys() else "_id",
-                    'count': arguments["perPage"] if "perPage" in arguments.keys() else 10
+                    'sort': self.get_argument("sort") if "sort" in arguments.keys() else "-_id",
+                    'page': self.get_argument("page") if "page" in arguments.keys() else 1,
+                    'perPage': self.get_argument("perPage") if "perPage" in arguments.keys() else 10
                 }
 
-                arguments = {key: value for key, value in self.request.arguments.items() if key not in pagination_fields.keys()}
+                arguments = {}
+                for key in self.request.arguments.keys():
+                    if "[" in key:
+                        start = key.index("[")
+                        end = key.index("]")
+                        arg_key = key[:start]
+                    
+                        if arg_key in accepted_arguments:
+                            arguments[arg_key] = {f"${key[(start + 1):end]}": int(self.get_argument(key))}
+                    elif key in accepted_arguments:
+                        arguments[key] = self.get_argument(key, default=None)
+                    
+                sort_order = DESCENDING if pagination_fields["sort"][0] == '-' else ASCENDING
+                sort = pagination_fields["sort"] if sort_order == ASCENDING else pagination_fields["sort"][1:]
 
-                customers = list(DB.customers.find({}, {"_id": 0}))
-                self.write(json.dumps(customers, indent=4))
+                print(arguments)
+
+                query = (
+                    DB.customers.find(arguments, {"_id": 0})
+                        .sort(sort, sort_order)
+                        .skip((pagination_fields["page"] - 1) * pagination_fields["perPage"])
+                        .limit(pagination_fields["perPage"])
+                )
+
+                customers = list(query)
+                count = DB.customers.count_documents(arguments)
+
+                prev_pagination = {}
+                next_pagination = {}
+                for key, value in pagination_fields.items():
+                    if (key == "page"):
+                        prev_pagination[key] = value - 1
+                        next_pagination[key] = value + 1
+                        continue
+
+                    prev_pagination[key] = value
+                    next_pagination[key] = value
+
+                page_count = (count + pagination_fields["perPage"] - 1) // pagination_fields["perPage"]
+
+                self.write({
+                    "data": customers,
+                    "meta": {
+                        "page": pagination_fields["page"],
+                        "perPage": pagination_fields["perPage"],
+                        "count": count,
+                        "pages": page_count,
+                        "prev": None if prev_pagination["page"] == 0 else f"{os.getenv('URI')}/customers?{urlencode(arguments | prev_pagination)}",
+                        "next": None if next_pagination["page"] > page_count else f"{os.getenv('URI')}/customers?{urlencode(arguments | next_pagination)}"
+                    }
+                })
             else:
                 # Implement email logic here, for now return first where email is email
-                customer = Customer()
-                customer = customer.find(email)
+                customer = CUSTOMER.find(email)
 
                 if customer == None:
                     self.set_status(404)
@@ -162,8 +217,7 @@ class CustomersHandler(BaseHandler):
             return
 
         # Create a new customer
-        customer = Customer()
-        response = Customer.save(customer, validated)
+        response = CUSTOMER.save(validated)
 
         # Set the status to 201 return data
         self.set_status(201)
