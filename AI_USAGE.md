@@ -44,7 +44,8 @@ rewardsservice/tests/customers_test.py::test_get_customers
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 First diagnose why the warning is showing and the changes required to fix it. Let me know if it is a breaking change or not and what updates we would need to make to the README files." 
 
-
+#### Exported File:
+(claude-test-setup-prompt-urbn.txt)[claude-test-setup-prompt-urbn.txt]
 ## How you used them
 Testing database configuration and pytest warning cleanup
 
