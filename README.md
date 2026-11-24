@@ -241,3 +241,4 @@ If you have more than one container engine installed (for example Rancher Deskto
 * I assumed rewardPoints must be >= 0.
 * On the "Get Customer Details" endpoint `GET /customers/{customer_email}` I'm not a fan of passing an email directly to the URL. In a production setting I'd opt for an ID key.
 * Nothing was in the spec on authentication. So I didn't set up any API Keys or User accounts. In a production setting these are things that would be added.
+* I opted not to make a UI for this project. I had too much fun with the REST API and opted to improve it instead.
