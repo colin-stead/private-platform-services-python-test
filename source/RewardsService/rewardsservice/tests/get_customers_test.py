@@ -4,9 +4,14 @@ customer_handler CustomerHandler:get() function test file.
 import requests
 from models.customers import Customer
 
-MAXIMUM_POINTS = 1000
-
 def test_get_customers(base_url):
+    """
+    Test GET /customers endpoint
+
+    - Regular call works
+    - Call with pagination filters work
+    - Call with query params work
+    """
     customers = [
         {"email": "tester1@urbn.com", "orderTotal": 134.00},
         {"email": "tester2@urbn.com", "orderTotal": 34.00},
