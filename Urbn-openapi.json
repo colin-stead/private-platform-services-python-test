@@ -6,7 +6,7 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/": {
+    "/rewards": {
       "get": {
         "summary": "Get Rewards",
         "responses": {
@@ -25,17 +25,7 @@
             "description": "Successful response"
           }
         },
-        "operationId": "Get_Customers",
-        "parameters": [
-          {
-            "name": "rewardTier",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            },
-            "example": "A"
-          }
-        ]
+        "operationId": "Get_Customers"
       },
       "put": {
         "summary": "Create Customer",
@@ -49,8 +39,27 @@
           "content": {
             "application/json": {
               "example": {
-                "email": "tester5@urbn.com",
-                "orderTotal": -51.98
+                "email": "colin@urbn.com",
+                "orderTotal": -49.06
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Customer",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "operationId": "Create_Customer_2",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "email": "colin@urbn.com",
+                "orderTotal": 849.06
               }
             }
           }
