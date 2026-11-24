@@ -28,13 +28,13 @@
         "operationId": "Get_Customers"
       },
       "put": {
-        "summary": "Create Customer",
+        "summary": "Update Customer",
         "responses": {
           "200": {
             "description": "Successful response"
           }
         },
-        "operationId": "Create_Customer",
+        "operationId": "Update_Customer",
         "requestBody": {
           "content": {
             "application/json": {
@@ -53,7 +53,7 @@
             "description": "Successful response"
           }
         },
-        "operationId": "Create_Customer_2",
+        "operationId": "Create_Customer",
         "requestBody": {
           "content": {
             "application/json": {
