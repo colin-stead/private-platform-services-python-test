@@ -16,6 +16,7 @@ CUSTOMER_COLLECTION = "customers"
 REWARDS_COLLECTION = "rewards"
 MINIMUM_REWARDS = 100
 MAXIMUM_REWARDS = 1000
+MINIMUM_POINTS = 0
 
 class Customer:
     """
@@ -53,11 +54,22 @@ class Customer:
         existing_customer = self._collection.find_one({"email": email})
 
         # Add total to points on existing customer's account if they exist, otherwise just use the order total
-        total_points = math.floor(
-            validated_data["orderTotal"] + existing_customer["rewardPoints"]
-            if existing_customer
-            else validated_data["orderTotal"]
+        # Round down for positives, and up for negatives (PUT method only)
+        total_points = (
+            math.floor(
+                validated_data["orderTotal"] + existing_customer["rewardPoints"]
+                if existing_customer
+                else validated_data["orderTotal"]
+            )
+            if validated_data["orderTotal"] > 0
+            else math.ceil(
+                validated_data["orderTotal"] + existing_customer["rewardPoints"]
+                if existing_customer
+                else validated_data["orderTotal"]
+            )
         )
+        if total_points < MINIMUM_POINTS:
+            total_points = MINIMUM_POINTS
 
         # Nearest reward point total will always be an integer, rounded down to the nearest hundred
         reward_points = min(int((total_points // MINIMUM_REWARDS) * 100), MAXIMUM_REWARDS)
@@ -71,7 +83,7 @@ class Customer:
                 self._rewards.find(
                     {"points": {"$gte": reward_points}}
                 )
-                .sort("points", pymongo.ASCENDING)
+                .sort("points", ASCENDING)
                 .limit(2)
             )
 
