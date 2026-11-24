@@ -2,8 +2,9 @@
 Request handler for multiple customers.
 
 GET /customers
-GET /customers/{customer_email}
 POST /customers
+GET /customers/{customer_email}
+PUT /customers/{customer_email}
 """
 import json
 import math
@@ -85,6 +86,8 @@ def _validate_customers_put_request(data):
 
     Can accept a negative value to decrease points, points will be capped at a minimum of 0 and maximum of 1000
 
+    We don't need to 422 invalid emails, it will 404 because the user won't be found
+
     Parameters:
         data (dict): The request body in a single dictionary
 
@@ -98,7 +101,7 @@ def _validate_customers_put_request(data):
             "error": "404 Not Found",
             "message": "Customer not found"
         }
-    
+
     validation_errors = {}
 
     # Validate email, update message + errors array if invalid
