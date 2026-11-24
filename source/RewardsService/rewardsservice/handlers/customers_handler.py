@@ -96,57 +96,92 @@ def _validate_customers_post_request(data):
     # Return validated data
     return data
 
+def _build_filters(handler):
+    """
+    Build filters for query/pagination
+
+    Parameters:
+        handler (CustomersHandler): The handler object so we can get argument key values
+    
+    Returns:
+        dict: The arguments fitting accepted filters, and pagination fields
+    """
+    # Only accepting two arguments
+    accepted_arguments = [
+        "rewardTier",
+        "rewardPoints",
+    ]
+
+    accepted_sorts = [
+        "-_id",
+        "_id",
+        "-rewardPoints",
+        "rewardPoints",
+        "-rewardTier",
+        "rewardTier",
+        "-nextRewardTierProgress",
+        "nextRewardTierProgress"
+    ]
+
+    # Gather arguments
+    arguments = handler.request.query_arguments
+    page = handler.get_argument("page", default=1)
+    perPage = handler.get_argument("perPage", default=10)
+    sort = handler.get_argument("sort", default="-_id")
+
+
+    pagination_fields = {
+        'sort': sort if sort in accepted_sorts else "-_id",
+        'page': int(page) if "page" in arguments.keys() and page.isdigit() else 1,
+        'perPage': int(perPage) if "perPage" in arguments.keys() and perPage.isdigit() else 10
+    }
+
+    arguments = {}
+    for key in handler.request.arguments.keys():
+        if "[" in key:
+            start = key.index("[")
+            end = key.index("]")
+            arg_key = key[:start]
+        
+            if arg_key in accepted_arguments:
+                value = handler.get_argument(key, default=None)
+                if (value.isdigit()):
+                    arguments[arg_key] = {f"${key[(start + 1):end]}": int(value)}
+        elif key in accepted_arguments:
+            value = handler.get_argument(key, default=None)
+            if (value.isdigit()):
+                arguments[key] = value
+
+    return {
+        "arguments": arguments,
+        "pagination_fields": pagination_fields
+    }
+
 class CustomersHandler(BaseHandler):
 
     async def get(self, email):
         """
-        Get all the customers
+        Get all the customers.
 
         Supports endpoints: GET /customers, GET /customers/{customer_email}
-        TODO: Add filtering, pagination, Support for single customer
+
+        Parameters:
+            email (str): The email of the customer to find (OPTIONAL)
+
+        See also:
+            __build_filters(handler) (line:99)
+            models.customers.get(<dict>) (models.customers:line 128)
         """
         # Send json of customers if they're in the db, otherwise empty 200 response
         try:
             if not email:
-                accepted_arguments = [
-                    "rewardTier",
-                    "rewardPoints",
-                ]
+                filters = _build_filters(self)
+                arguments, pagination_fields = filters["arguments"], filters["pagination_fields"]
 
-                arguments = self.request.query_arguments
-                pagination_fields = {
-                    'sort': self.get_argument("sort") if "sort" in arguments.keys() else "-_id",
-                    'page': self.get_argument("page") if "page" in arguments.keys() else 1,
-                    'perPage': self.get_argument("perPage") if "perPage" in arguments.keys() else 10
-                }
+                customers = CUSTOMER.get(arguments | pagination_fields)
+                count = customers["count"]
 
-                arguments = {}
-                for key in self.request.arguments.keys():
-                    if "[" in key:
-                        start = key.index("[")
-                        end = key.index("]")
-                        arg_key = key[:start]
-                    
-                        if arg_key in accepted_arguments:
-                            arguments[arg_key] = {f"${key[(start + 1):end]}": int(self.get_argument(key))}
-                    elif key in accepted_arguments:
-                        arguments[key] = self.get_argument(key, default=None)
-                    
-                sort_order = DESCENDING if pagination_fields["sort"][0] == '-' else ASCENDING
-                sort = pagination_fields["sort"] if sort_order == ASCENDING else pagination_fields["sort"][1:]
-
-                print(arguments)
-
-                query = (
-                    DB.customers.find(arguments, {"_id": 0})
-                        .sort(sort, sort_order)
-                        .skip((pagination_fields["page"] - 1) * pagination_fields["perPage"])
-                        .limit(pagination_fields["perPage"])
-                )
-
-                customers = list(query)
-                count = DB.customers.count_documents(arguments)
-
+                # Build pagination data
                 prev_pagination = {}
                 next_pagination = {}
                 for key, value in pagination_fields.items():
@@ -161,7 +196,7 @@ class CustomersHandler(BaseHandler):
                 page_count = (count + pagination_fields["perPage"] - 1) // pagination_fields["perPage"]
 
                 self.write({
-                    "data": customers,
+                    "data": customers["data"],
                     "meta": {
                         "page": pagination_fields["page"],
                         "perPage": pagination_fields["perPage"],
@@ -175,6 +210,7 @@ class CustomersHandler(BaseHandler):
                 # Implement email logic here, for now return first where email is email
                 customer = CUSTOMER.find(email)
 
+                # Return 404 (NOT FOUND) if customer isn't found 
                 if customer == None:
                     self.set_status(404)
                     self.write({
