@@ -128,9 +128,9 @@ If you have more than one container engine installed (for example Rancher Deskto
 * `GET /customers`
     * Gets a list of all the customers that are in the database.
     * Accepts Following Filters:
-        * sort: The key to sort on. ACCEPTED VALUES: [`-_id`, `_id`, `-rewardPoints`, `rewardPoints`, `-rewardTier`, `rewardTier`, `-nextRewardTierProgress`, `nextRewardTierProgress`]
-        * rewardTier: char ranging from A - J. Must be uppercase. Anything else will return nothing.
-        * rewardPoints: The rewardPoint value. This can also be passed as `rewardPoints[lt]` (for less than a value), `rewardPoints[gt]` (for greater than a value), `rewardPoints[lte]` (for less than or equal to a value), `rewardPoints[gte]` (for greater than or equal to a value) or whatever other comparison you'd like to make between the braces.
+        * `sort` - The key to sort on. ACCEPTED VALUES: [`-_id`, `_id`, `-rewardPoints`, `rewardPoints`, `-rewardTier`, `rewardTier`, `-nextRewardTierProgress`, `nextRewardTierProgress`]
+        * `rewardTier` - char ranging from A - J. Must be uppercase. Anything else will return nothing.
+        * `rewardPoints` - The rewardPoint value. This can also be passed as `rewardPoints[lt]` (for less than a value), `rewardPoints[gt]` (for greater than a value), `rewardPoints[lte]` (for less than or equal to a value), `rewardPoints[gte]` (for greater than or equal to a value) or whatever other comparison you'd like to make between the braces.
     * Uses Tornado's default etag handling and passes an etag in the response header.
     * Response Codes `200`, `304`
     * Example `200` Response Body (with data in DB):
