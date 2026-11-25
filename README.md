@@ -265,7 +265,7 @@ If you have more than one container engine installed (for example Rancher Deskto
         ```
 
 ## Manual Usage of API
-* I included json file called [Urbn-openapi.json](Urbn-openapi.json) in the root directory. You can import this file to [hoppscotch.io](https://hoppscotch.io/) or another REST Client that accepts the JSON file and test for yourself. Otherwise you can curl endpoints as you'd like.
+* I included json file called [Urbn-openapi.json](Urbn-openapi.json) in the root directory. You can import this file to [hoppscotch.io](https://hoppscotch.io/) via Import > "Import from OpenAPI" or another REST Client that accepts the JSON file and test for yourself. Otherwise you can curl endpoints as you'd like.
 
 ### curl GET /rewards
 ```
