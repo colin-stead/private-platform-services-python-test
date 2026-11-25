@@ -312,6 +312,16 @@ curl "http://localhost:7050/customers" \
     --url-query "sort=-rewardPoints"
 ```
 
+### curl GET /customers/{customer_email}
+For the generic /customers endpoint replace the {customer_email} with the email you'd like to search and run
+```
+curl "http://localhost:7050/customers/{customer_email}
+```
+Example:
+```
+curl "http://localhost:7050/customers/colin@urbn.com
+```
+
 ### curl POST /customers
 ```
 curl -X POST http://localhost:7050/customers \
