@@ -27,7 +27,24 @@ Setup for the [RewardsService](source/RewardsService/README.md) stays the same w
 * `pytest 9.2.0` for unit testing.
 * `requests 2.34.2` for hitting endpoints in pytest.
 
-I also upgraded `tornado` to `6.5.10`.
+I also upgraded `tornado` to `6.5.10` and set debug mode to false in [settings.py](source/RewardsService/rewardsservice/settings.py)
+
+# Assumptions & Tradeoffs
+* `POST /customers`
+    * I assumed we wouldn't want duplicate customers with the same emails. So I added a `409` response and another endpoint to update customer rewards `PUT /customers/{customer_email}`. This follows best practices in API design.
+    * I assumed "No more rewards can be earned" also meant there's a cap to reward points a customer can earn. So for this project, once a customer hits the "J Tier", they can no longer earn more points and are capped at 1000. The POST/PUT endpoints will still return 200 OK responses but the rewards data will not change.
+    * I assumed rewardPoints must be >= 0.
+* `GET /customers/{customer_email}`
+    * I assumed default sorting should be most recently added customer to oldest customer on `GET /customers/`
+    * I'm not a fan of passing an email directly to the URL. In a production setting I'd opt for an ID key.
+* `GET /customers`
+    * No server side caching. Takes advantage of Tornado's built in etag handling. In a production setting I'd prefer to cache the results of heavily trafficked endpoints like server side with something like Redis.
+* Authentication
+    * Nothing was in the spec on authentication. So I didn't set up any API Keys or User accounts. In a production setting these are things that would be added.
+* [Documentation](#endpoint-documentation)
+    * I only included docs in the README files. In a production setting I'd use something like Swagger for documentation. FastAPI supports this out of the box, unsure if there's a good tornado plugin or not.
+* UI
+    * I opted not to make a UI for this project. I had too much fun with the backend REST API and opted to improve it instead.
 
 # Testing
 Tests run with `pytest` on your machine (not inside docker) against a separate **`Tests`** MongoDB database, so the `Rewards` database used by the service on `http://localhost:7050` is never touched. `conftest.py` starts its own copy of the service on **port 7051** that is pointed at the `Tests` database.
@@ -70,23 +87,26 @@ Database settings are environment variables read in `source/RewardsService/datab
 
 If you have more than one container engine installed (for example Rancher Desktop and Docker Desktop), make sure the MongoDB that owns host port `27017` is the one you expect.
 
-# Endpoints
+# DB Cleanup
+* When the rewardsservice container stops running the `customers` collection persists. So restarting the container doesn't wipe data. To get a clean slate run `docker-compose down -v` Then run `docker-compose build && docker-compose up -d`
+
+# Endpoint Documentation
 * `POST /customers`
-    * Creates a new customer in the Rewards DB under the customers collection. 409s if the customer exists
+    * Creates a new customer in the Rewards DB under the `customers` collection. 409s if the customer exists
     * Request Body accepts:
-        * `email` - a string, the customers email
-        * `orderTotal` - a number with no more than 2 digits after the decimal. A monetary value. No negatives
+        * `email` - a string, the customer's email
+        * `orderTotal` - a number with no more than 2 digits after the decimal. A monetary value. No negatives.
     * Request Body Example:
         {
             "email": "colin@urbn.com",
             "orderTotal": 200.98
         }
-    * Response Codes 201, 409, and 422
-    * 422 reasons:
-        * Invalid email (error_code: 001)
-        * Invalid orderTotal (error_code: 002)
-        * Negative orderTotal (error_code: 003)
-    * Example 201 Response:
+    * Response Codes `201`, `409`, and `422`
+    * `422` reasons:
+        * Invalid email (`error_code: 001`)
+        * Invalid orderTotal (`error_code: 002`)
+        * Negative orderTotal (`error_code: 003`)
+    * Example `201` Response:
         ```
         {
             "email": "test.customer@urbn.com",
@@ -98,7 +118,7 @@ If you have more than one container engine installed (for example Rancher Deskto
             "nextRewardTierProgress": 0.97
         }
         ```
-    * Example 409 Response:
+    * Example `409` Response:
         ```
         {
             "message": "Cannot create Customer. Customer with email: colin@urbn.com already exists.",
@@ -109,7 +129,7 @@ If you have more than one container engine installed (for example Rancher Deskto
             }
         }
         ```
-     * Example 422 Response:
+     * Example `422` Response:
         ```
         {
             "message": "Invalid email and 1 more.",
@@ -128,12 +148,12 @@ If you have more than one container engine installed (for example Rancher Deskto
 * `GET /customers`
     * Gets a list of all the customers that are in the database.
     * Accepts Following Filters:
-        * sort: The key to sort on. ACCEPTED VALUES: [`-_id`, `_id`, `-rewardPoints`, `rewardPoints`, `-rewardTier`, `rewardTier`, `-nextRewardTierProgress`, `nextRewardTierProgress`]
-        * rewardTier: Char ranging from A - J. Must be uppercase. Anything else will return nothing.
-        * rewardPoints: The rewardPoint value. This can also be passed as `rewardPoints[lt]` (for less than a value), `rewardPoints[gt]` (for greater than a value), `rewardPoints[lte]` (for less than or equal to a value), `rewardPoints[gte]` (for greater than or equal to a value) or whatever other comparison you'd like to make between the braces.
+        * `sort` - The key to sort on. ACCEPTED VALUES: [`-_id`, `_id`, `-rewardPoints`, `rewardPoints`, `-rewardTier`, `rewardTier`, `-nextRewardTierProgress`, `nextRewardTierProgress`]
+        * `rewardTier` - char ranging from A - J. Must be uppercase. Anything else will return nothing.
+        * `rewardPoints` - The rewardPoint value. This can also be passed as `rewardPoints[lt]` (for less than a value), `rewardPoints[gt]` (for greater than a value), `rewardPoints[lte]` (for less than or equal to a value), `rewardPoints[gte]` (for greater than or equal to a value) or whatever other comparison you'd like to make between the braces.
     * Uses Tornado's default etag handling and passes an etag in the response header.
-    * Response Codes 200, 304
-    * Example 200 Response Body (with data in DB):
+    * Response Codes `200`, `304`
+    * Example `200` Response Body (with data in DB):
         ```
         {
             "data": [
@@ -164,7 +184,7 @@ If you have more than one container engine installed (for example Rancher Deskto
             }
         }
         ```
-    * Example 200 Response Body (without data in DB):
+    * Example `200` Response Body (without data in DB):
         ```
         {
             "data": [],
@@ -179,10 +199,10 @@ If you have more than one container engine installed (for example Rancher Deskto
         }
         ```
 * `GET /customers/{customer_email}`
-    * Get a customer from the database with their email
+    * Get a customer from the database by their email
     * Uses Tornado's default etag handling and passes an etag in the response header.
-    * Response Codes 200, 304, 404
-    * Example 200 Response:
+    * Response Codes `200`, `304`, `404`
+    * Example `200` Response:
         ```
         {
             "email": "colin@gmail.com",
@@ -193,7 +213,7 @@ If you have more than one container engine installed (for example Rancher Deskto
             "rewardTierName": "5% off purchase"
         }
         ```
-    * Example 404 Response:
+    * Example `404` Response:
         ```
         {
             "error": "404 Not Found",
@@ -201,7 +221,7 @@ If you have more than one container engine installed (for example Rancher Deskto
         }
         ```
 * `PUT /customers/{customer_email}`
-    * Update a customer from the database given their email
+    * Update a customer in the database given their email
     * Request Body accepts:
         * `email` - a string, the customers email
         * `orderTotal` - a number with no more than 2 digits after the decimal. A monetary value. Negatives are allowed
@@ -212,8 +232,8 @@ If you have more than one container engine installed (for example Rancher Deskto
             "orderTotal": 200.98
         }
         ```
-    * Response codes 200, 404, 422
-    * Example 200 Response:
+    * Response codes `200`, `404`, `422`
+    * Example `200` Response:
         ```
         {
             "email": "colin@gmail.com",
@@ -224,36 +244,27 @@ If you have more than one container engine installed (for example Rancher Deskto
             "rewardTierName": "15% off purchase"
         }
         ```
-    * Example 404 Response:
+    * Example `404` Response:
         ```
         {
             "error": "404 Not Found",
             "message": "Customer not found"
         }
         ```
-    * Example 422 Response:
-    ```
-    {
-        "message": "Invalid monetary value.",
-        "error_code": "002",
-        "errors": {
-            "orderTotal": [
-                "The monetary value is invalid. Round to nearest cent."
-            ]
+    * Example `422` Response:
+        ```
+        {
+            "message": "Invalid monetary value.",
+            "error_code": "002",
+            "errors": {
+                "orderTotal": [
+                    "The monetary value is invalid. Round to nearest cent."
+                ]
+            }
         }
-    }
-    ```
+        ```
 
-# Assumptions & Tradeoffs
-* On the "Create Customer" endpoint `POST /customers` I assumed we wouldn't want duplicate customers with the same emails. So I added a 409 response and another endpoint to update customer rewards `PUT /customers/{customer_email}`. This follows best practices in API design.
-* I assumed "No more rewards can be earned" also meant there's a cap to reward points a customer can earn. So for this project, once a customer hits the "J Tier", they can no longer earn more points and are capped at 1000. The POST/PUT endpoints will still return 200 OK responses but the rewards data will not change.
-* I assumed rewardPoints must be >= 0.
-* On the "Get Customer Details" endpoint `GET /customers/{customer_email}` I'm not a fan of passing an email directly to the URL. In a production setting I'd opt for an ID key.
-* Nothing was in the spec on authentication. So I didn't set up any API Keys or User accounts. In a production setting these are things that would be added.
-* No server side caching. Takes advantage of Tornado's built in etag handling. In a production setting I'd prefer to cache the results of heavily trafficked endpoints like `GET /customers` server side with something like Redis.
-* I opted not to make a UI for this project. I had too much fun with the backend REST API and opted to improve it instead.
-
-# Manual Usage of API
+## Manual Usage of API
 * I included json file called [Urbn-openapi.json](Urbn-openapi.json) in the root directory. You can import this file to [hoppscotch.io](https://hoppscotch.io/) or another REST Client that accepts the JSON file and test for yourself. Otherwise you can curl endpoints as you'd like.
 
 ### curl GET /rewards

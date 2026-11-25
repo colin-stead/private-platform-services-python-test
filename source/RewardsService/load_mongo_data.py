@@ -24,7 +24,6 @@ def load(db):
     """
     db.rewards.drop()
     db.rewards.insert_many([dict(reward) for reward in REWARDS])
-    db.customers.drop()
 
 
 def main():
