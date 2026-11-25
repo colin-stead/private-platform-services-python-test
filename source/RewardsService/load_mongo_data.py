@@ -17,7 +17,7 @@ REWARDS = [
 
 def load(db):
     """
-    Drop and reload the rewards collection, and empty out the customers collection.
+    Drop and reload the rewards collection
 
     Parameters:
         db (Database): The database to load into (set by DB_NAME, see database.py)
