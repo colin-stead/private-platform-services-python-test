@@ -232,17 +232,17 @@ If you have more than one container engine installed (for example Rancher Deskto
         }
         ```
     * Example `422` Response:
-    ```
-    {
-        "message": "Invalid monetary value.",
-        "error_code": "002",
-        "errors": {
-            "orderTotal": [
-                "The monetary value is invalid. Round to nearest cent."
-            ]
+        ```
+        {
+            "message": "Invalid monetary value.",
+            "error_code": "002",
+            "errors": {
+                "orderTotal": [
+                    "The monetary value is invalid. Round to nearest cent."
+                ]
+            }
         }
-    }
-    ```
+        ```
 
 # Assumptions & Tradeoffs
 * On the "Create Customer" endpoint `POST /customers` I assumed we wouldn't want duplicate customers with the same emails. So I added a `409` response and another endpoint to update customer rewards `PUT /customers/{customer_email}`. This follows best practices in API design.
