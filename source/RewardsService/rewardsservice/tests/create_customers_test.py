@@ -1,5 +1,5 @@
 """
-customer_handler CustomerHandler:create() function test file.
+customer_handler CustomerHandler:post() function test file.
 """
 import requests
 from models.customers import Customer
