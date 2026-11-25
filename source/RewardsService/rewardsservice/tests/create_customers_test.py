@@ -1,5 +1,5 @@
 """
-customer_handler CustomerHandler:create() function test file.
+customer_handler CustomerHandler:post() function test file.
 """
 import requests
 from models.customers import Customer
@@ -140,34 +140,25 @@ def test_create_customer_with_invalid_email_fails_validation(base_url):
     Test POST /customers endpoint
 
     - An invalid email should 422
+    - error_code should be 001
     """
     payload = {
-        "email": "tester.mail.com",
+        "email": "tester.urbn.com",
         "orderTotal": 99.99
     }
 
     response = requests.post(f"{base_url}/customers", json=payload)
+    response_body = response.json()
+
     assert response.status_code == 422
-
-def test_create_customer_with_negative_number_fails_validation(base_url):
-    """
-    Test POST /customers endpoint
-
-    - An negative number should 422
-    """
-    payload = {
-        "email": "tester.mail.com",
-        "orderTotal": -1.00
-    }
-
-    response = requests.post(f"{base_url}/customers", json=payload)
-    assert response.status_code == 422
+    assert response_body["error_code"] == "001"
 
 def test_create_customer_with_invalid_order_total_fails_validation(base_url):
     """
     Test POST /customers endpoint
 
     - An orderTotal doesn't represent a monetary value should 422
+    - error_code should be 002
     """
     payload = {
         "email": "tester@urbn.com",
@@ -175,7 +166,28 @@ def test_create_customer_with_invalid_order_total_fails_validation(base_url):
     }
 
     response = requests.post(f"{base_url}/customers", json=payload)
+    response_body = response.json()
+    
     assert response.status_code == 422
+    assert response_body["error_code"] == "002"
+
+def test_create_customer_with_negative_number_fails_validation(base_url):
+    """
+    Test POST /customers endpoint
+
+    - An negative number should 422
+    - error_code should be 003
+    """
+    payload = {
+        "email": "tester@urbn.com",
+        "orderTotal": -1.00
+    }
+
+    response = requests.post(f"{base_url}/customers", json=payload)
+    response_body = response.json()
+    
+    assert response.status_code == 422
+    assert response_body["error_code"] == "003"
 
 def test_create_customer_with_invalid_payload_fails_validation_with_two_errors(base_url):
     """
@@ -186,7 +198,7 @@ def test_create_customer_with_invalid_payload_fails_validation_with_two_errors(b
     - response.body.errors should be equal to 2
     """
     payload = {
-        "email": "tester.mail.com",
+        "email": "tester.urbn.com",
         "orderTotal": 99.997
     }
 

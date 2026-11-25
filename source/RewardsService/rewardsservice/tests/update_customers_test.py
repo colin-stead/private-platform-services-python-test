@@ -130,20 +130,37 @@ def test_we_404_unknown_emails(base_url, db):
 
     assert response.status_code == 404
 
+def test_we_422_invalid_emails(base_url, db):
+    """
+    Test PUT /customers endpoint
+
+    - The status code should be 422 (UNPROCESSABLE ENTITY)
+    - error_code should be 001
+    """
+    payload = {
+        "email": "tester6urbn.com",
+        "orderTotal": 1400
+    }
+
+    response = requests.put(f"{base_url}/customers", json=payload)
+    response_body = response.json()
+
+    assert response.status_code == 422
+    assert response_body["error_code"] == "001"
+
 def test_we_422_invalid_order_totals(base_url, db):
     """
     Test PUT /customers endpoint
 
     - The status code should be 422 (UNPROCESSABLE ENTITY)
     """
-    # Add the existing customer to the Tests DB (removed again after the test by the clean_customers fixture)
-    db.customers.insert_one({"email": "tester@urbn.com", "rewardPoints": 99, "rewardTier": None, "rewardTierName": None})
-
     payload = {
         "email": "tester@urbn.com",
         "orderTotal": 1400.6789
     }
 
     response = requests.put(f"{base_url}/customers", json=payload)
+    response_body = response.json()
 
     assert response.status_code == 422
+    assert response_body["error_code"] == "002"

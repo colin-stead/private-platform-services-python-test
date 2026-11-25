@@ -1,5 +1,5 @@
 """
-Rewards handler test files.
+Rewards handler test.
 """
 import requests
 

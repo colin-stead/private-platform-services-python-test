@@ -42,22 +42,6 @@ def _validate_customers_request(data):
         validation_errors["error_code"] = "001"
         validation_errors["errors"] = {"email": ["The given email is invalid."]}
 
-    if data['orderTotal'] < 0:
-        if "message" in validation_errors.keys():
-            validation_errors["message"] = f"{validation_errors['message'][:-1]} and 1 more."
-        else:
-            validation_errors["message"] = "Invalid monetary value."
-            validation_errors["error_code"] = "002"
-
-
-        error_row = {"orderTotal": ["The monetary value is invalid. Must be positive"]}
-        validation_errors["errors"] = (
-            validation_errors["errors"] | error_row
-            if "errors" in validation_errors.keys()
-            else error_row
-        )
-        return validation_errors
-
     # Format the order total to make sure it's a valid monetary value. Only 2 decimal places, round down any trailing decimals.
     total_to_format = (math.floor(data['orderTotal'] * 100) / 100)
     formatted_order_total = f"{total_to_format:.2f}"
@@ -68,16 +52,18 @@ def _validate_customers_request(data):
             validation_errors["message"] = f"{validation_errors['message'][:-1]} and 1 more."
         else:
             validation_errors["message"] = "Invalid monetary value."
-            validation_errors["error_code"] = "003"
+            validation_errors["error_code"] = "002"
 
         error_row = {"orderTotal": ["The monetary value is invalid. Round to nearest cent."]}
+
+        # Merge errors with new error row if errors is set, otherwise set errors to just the error row.
         validation_errors["errors"] = (
             validation_errors["errors"] | error_row
             if "errors" in validation_errors.keys()
             else error_row
         )
 
-    # Return 422 payload
+    # Return 422 payload or validated data
     return validation_errors if len(validation_errors) > 0 else data
 
 def _validate_customers_put_request(data):
@@ -86,14 +72,20 @@ def _validate_customers_put_request(data):
 
     Can accept a negative value to decrease points, points will be capped at a minimum of 0 and maximum of 1000
 
-    We don't need to 422 invalid emails, it will 404 because the user won't be found
-
     Parameters:
         data (dict): The request body in a single dictionary
 
     Returns:
         dict: Error code dict to use for response or validated data to update customer document with.
+    
+    See Also:
+        - _validate_customers_request() (line 27)
     """
+    # Check for 422 errors
+    validated = _validate_customers_request(data)
+    if "errors" in validated.keys():
+        return validated
+    
     # Check if incoming customer exists
     existing_customer = DB.customers.find_one({"email": data["email"]})
     if existing_customer == None:
@@ -102,35 +94,8 @@ def _validate_customers_put_request(data):
             "message": "Customer not found"
         }
 
-    validation_errors = {}
-
-    # Validate email, update message + errors array if invalid
-    if not validators.email(data["email"]):
-        validation_errors["message"] = "Invalid email."
-        validation_errors["error_code"] = "001"
-        validation_errors["errors"] = {"email": ["The given email is invalid."]}
-
-    # Format the order total to make sure it's a valid monetary value. Only 2 decimal places, round down any trailing decimals if > 0, otherwise round up.
-    total_to_format = (math.floor(data['orderTotal'] * 100) / 100) if data["orderTotal"] > 0 else (math.ceil(data['orderTotal'] * 100) / 100)
-    formatted_order_total = f"{total_to_format:.2f}"
-    
-    # Validate orderTotal, update message + errors array if invalid. Passed value should be same length as formatted.
-    if len(str(data["orderTotal"])) > len(formatted_order_total):
-        if "message" in validation_errors.keys():
-            validation_errors["message"] = f"{validation_errors['message'][:-1]} and 1 more."
-        else:
-            validation_errors["message"] = "Invalid monetary value."
-            validation_errors["error_code"] = "003"
-
-        error_row = {"orderTotal": ["The monetary value is invalid. Round to nearest cent."]}
-        validation_errors["errors"] = (
-            validation_errors["errors"] | error_row
-            if "errors" in validation_errors.keys()
-            else error_row
-        )
-
-    # Return 422 payload
-    return validation_errors if len(validation_errors) > 0 else data
+    # Return validated data
+    return data
 
 def _validate_customers_post_request(data):
     """
@@ -143,12 +108,24 @@ def _validate_customers_post_request(data):
         dict: Error code dict to use for response or validated data to build customer document with.
 
     See Also:
-        _validate_customers_request() (line 22)
+        - _validate_customers_request() (line 27)
     """
     # Check for 422 errors
     validated = _validate_customers_request(data)
     if "errors" in validated.keys():
         return validated
+
+    # One extra 422 check on creation
+    if data['orderTotal'] < 0:
+        validation_errors = {
+            "message": "Invalid monetary value.",
+            "error_code": "003",
+            "errors": {
+                "orderTotal": ["The monetary value is invalid. Must be positive on creation."]
+            }
+        }
+
+        return validation_errors
 
     # Check if incoming customer exists
     existing_customer = DB.customers.find_one({"email": data["email"]})
@@ -194,19 +171,21 @@ def _build_filters(handler):
         "nextRewardTierProgress"
     ]
 
-    # Gather arguments
+    # Gather arguments with defaults
     arguments = handler.request.query_arguments
     page = handler.get_argument("page", default=1)
     perPage = handler.get_argument("perPage", default=10)
     sort = handler.get_argument("sort", default="-_id")
 
 
+    # Set pagination and defaults
     pagination_fields = {
         'sort': sort if sort in accepted_sorts else "-_id",
         'page': int(page) if "page" in arguments.keys() and page.isdigit() else 1,
         'perPage': int(perPage) if "perPage" in arguments.keys() and perPage.isdigit() else 10
     }
 
+    # Build query params dict for MongoDB query
     arguments = {}
     for key in handler.request.arguments.keys():
         if "[" in key:
@@ -242,8 +221,9 @@ class CustomersHandler(BaseHandler):
             email (str): The email of the customer to find (OPTIONAL)
 
         See also:
-            __build_filters(handler) (line:99)
-            models.customers.get(<dict>) (models.customers:line 128)
+            - _build_filters(handler) (line 149)
+            - models.customers.get(<dict>) (models.customers:line 137)
+            - models.customers.find(<str>) (models.customers:line 125)
         """
         # Send json of customers if they're in the db, otherwise empty 200 response
         try:
@@ -251,6 +231,7 @@ class CustomersHandler(BaseHandler):
                 filters = _build_filters(self)
                 arguments, pagination_fields = filters["arguments"], filters["pagination_fields"]
 
+                # Run query against DB in model
                 customers = CUSTOMER.get(arguments | pagination_fields)
                 count = customers["count"]
 
@@ -280,7 +261,7 @@ class CustomersHandler(BaseHandler):
                     }
                 })
             else:
-                # Implement email logic here, for now return first where email is email
+                # Find the customer given the email
                 customer = CUSTOMER.find(email)
 
                 # Return 404 (NOT FOUND) if customer isn't found 
@@ -305,8 +286,8 @@ class CustomersHandler(BaseHandler):
             POST /customers
 
         See Also:
-            - _validate_customers_request(<dict>) (line 133)
-            - models.customers.save(<dict>) (models.customers:line 92)
+            - _validate_customers_post_request(<dict>) (line 100)
+            - models.customers.save(<dict>) (models.customers:line 101)
         """
         customer_data = json.loads(self.request.body)
 
@@ -340,8 +321,8 @@ class CustomersHandler(BaseHandler):
             PUT /customers
 
         See Also:
-            - _validate_customers_put_request(<dict>) (line 82)
-            - models.customers.save(<dict>) (models.customers:line 92)
+            - _validate_customers_put_request(<dict>) (line 69)
+            - models.customers.save(<dict>) (models.customers:line 101)
         """
         customer_data = json.loads(self.request.body)
 
