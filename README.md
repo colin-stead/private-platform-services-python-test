@@ -27,7 +27,7 @@ Setup for the [RewardsService](source/RewardsService/README.md) stays the same w
 * `pytest 9.2.0` for unit testing.
 * `requests 2.34.2` for hitting endpoints in pytest.
 
-I also upgraded `tornado` to `6.5.10`.
+I also upgraded `tornado` to `6.5.10` and set debug mode to false in [settings.py](source/RewardsService/rewardsservice/settings.py)
 
 # Assumptions & Tradeoffs
 * `POST /customers`
