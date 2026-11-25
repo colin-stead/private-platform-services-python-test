@@ -1,13 +1,13 @@
 import json
-import tornado.web
 
-from pymongo import MongoClient
+import database
 
+from .base_handler import BaseHandler
 
-class RewardsHandler(tornado.web.RequestHandler):
+DB = database.get_db()
+
+class RewardsHandler(BaseHandler):
 
     async def get(self):
-        client = MongoClient("mongodb", 27017)
-        db = client["Rewards"]
-        rewards = list(db.rewards.find({}, {"_id": 0}))
-        self.write(json.dumps(rewards))
+        rewards = list(DB.rewards.find({}, {"_id": 0}))
+        self.write(json.dumps(rewards, indent=4))

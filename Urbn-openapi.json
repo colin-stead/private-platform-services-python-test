@@ -1,0 +1,147 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Urbn",
+    "description": "",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/rewards": {
+      "get": {
+        "summary": "Get Rewards",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "operationId": "Get_Rewards"
+      }
+    },
+    "/customers": {
+      "get": {
+        "summary": "Get Customers",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "operationId": "Get_Customers",
+        "parameters": [
+          {
+            "name": "rewardTier",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter on rewardTier"
+          },
+          {
+            "name": "rewardPoints",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter on rewardPoints, use [gt]/[gte]/[lt]/[lte] for comparisons"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Sort key, prefix with \"-\" for descending values (default -_id)"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Which page to view (default 1)"
+          },
+          {
+            "name": "perPage",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Records per page (default 10)"
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "example": "\"9dcec49f59819d7eb7ad1aad1f45abede98f06ca\""
+          }
+        ]
+      },
+      "post": {
+        "summary": "Create Customer",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "operationId": "Create_Customer",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "email": "john.smith@urbn.com",
+                "orderTotal": 600.98
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update Customer",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "operationId": "Update_Customer",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "email": "john.smith@urbn.com",
+                "orderTotal": 100
+              }
+            }
+          }
+        }
+      }
+    },
+    "/customers/{email}": {
+      "get": {
+        "summary": "Get Customer Details",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "operationId": "Get_Customer_Details",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "john.smith@urbn.com"
+          }
+        ]
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:7050"
+    }
+  ]
+}

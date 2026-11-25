@@ -6,13 +6,15 @@ from tornado.options import define
 path = lambda root, *a: os.path.join(root, *a)
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
+os.environ.setdefault("URI", "http://localhost:7050")
+
 STATIC_ROOT = path(ROOT, 'static')
 TEMPLATE_ROOT = path(ROOT, 'templates')
 
 define("port", default=7050, help="run on the given port", type=int)
 
 settings = {
-    'debug': True,
+    'debug': False,
     'static_path': STATIC_ROOT,
     'template_loader': tornado.template.Loader(TEMPLATE_ROOT)
 }
