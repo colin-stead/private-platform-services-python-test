@@ -11,6 +11,7 @@ def test_get_customers(base_url):
     - Regular call works
     - Call with pagination filters work
     - Call with query params work
+    - 304 status_code when etag is provided in header
     """
     customers = [
         {"email": "tester1@urbn.com", "orderTotal": 134.00},
@@ -42,11 +43,17 @@ def test_get_customers(base_url):
     # Test customers with no filter
     response = requests.get(f"{base_url}/customers")
     response_body = response.json()
+    etag = response.headers["etag"]
 
     assert response.status_code == 200
     assert response_body["meta"]["count"] == 20
     assert response_body["meta"]["page"] == 1
     assert response_body["meta"]["perPage"] == 10
+
+    # Check we get a 304 when the resource isn't modified
+    response = requests.get(f"{base_url}/customers", headers={"If-None-Match": etag})
+
+    assert response.status_code == 304
 
     # Test page/perPage results
     response = requests.get(f"{base_url}/customers", params={"page": 2})
@@ -151,6 +158,27 @@ def test_we_can_find_customer_with_email(base_url, db):
     assert response_body["rewardTier"] == "B"
     assert response_body["rewardTierName"] == "10% off purchase"
     assert response_body["nextRewardTier"] == "C"
+
+def test_we_receive_304_on_find_with_etag_in_header(base_url, db):
+    """
+    Test GET /customers/{customer_email} endpoint
+
+    - The status code should be 200 (OK)
+    - The response should match data for the customer in the db
+    """
+    payload = {"email": "tester@urbn.com", "orderTotal": 234}
+
+    # Create a B Tier customer, nextRewardTier will be C    
+    customer = Customer()
+    customer = customer.save({"email": "tester@urbn.com", "orderTotal": 234})
+
+    response = requests.get(f"{base_url}/customers/{payload['email']}")
+    etag = response.headers["etag"]
+
+    # Check we get a 304 when the resource isn't modified
+    response = requests.get(f"{base_url}/customers/{payload['email']}", headers={"If-None-Match": etag})
+
+    assert response.status_code == 304
 
 def test_we_404_when_email_is_not_in_the_database(base_url, db):
     """
