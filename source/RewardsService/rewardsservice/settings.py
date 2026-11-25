@@ -12,7 +12,7 @@ TEMPLATE_ROOT = path(ROOT, 'templates')
 define("port", default=7050, help="run on the given port", type=int)
 
 settings = {
-    'debug': True,
+    'debug': False,
     'static_path': STATIC_ROOT,
     'template_loader': tornado.template.Loader(TEMPLATE_ROOT)
 }
