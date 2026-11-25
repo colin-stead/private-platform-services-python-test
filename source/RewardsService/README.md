@@ -115,7 +115,7 @@ I also upgraded `tornado` to `6.5.10`.
     * No server side caching. Takes advantage of Tornado's built in etag handling. In a production setting I'd prefer to cache the results of heavily trafficked endpoints like server side with something like Redis.
 * Authentication
     * Nothing was in the spec on authentication. So I didn't set up any API Keys or User accounts. In a production setting these are things that would be added.
-* Documentation
+* [Documentation](#endpoint-documentation)
     * I only included docs in the README files. In a production setting I'd use something like Swagger for documentation. FastAPI supports this out of the box, unsure if there's a good tornado plugin or not.
 * UI
     * I opted not to make a UI for this project. I had too much fun with the backend REST API and opted to improve it instead.
