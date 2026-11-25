@@ -50,7 +50,7 @@
             "application/json": {
               "example": {
                 "email": "john.smith@urbn.com",
-                "orderTotal": 2000
+                "orderTotal": 100
               }
             }
           }
