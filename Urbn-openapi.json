@@ -25,7 +25,17 @@
             "description": "Successful response"
           }
         },
-        "operationId": "Get_Customers"
+        "operationId": "Get_Customers",
+        "parameters": [
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "example": "\"9dcec49f59819d7eb7ad1aad1f45abede98f06ca\""
+          }
+        ]
       },
       "put": {
         "summary": "Update Customer",
@@ -39,8 +49,8 @@
           "content": {
             "application/json": {
               "example": {
-                "email": "colin@urbn.com",
-                "orderTotal": -49.06
+                "email": "john.smith@urbn.com",
+                "orderTotal": 2000
               }
             }
           }
@@ -58,12 +68,34 @@
           "content": {
             "application/json": {
               "example": {
-                "email": "colin@urbn.com",
-                "orderTotal": 849.06
+                "email": "john.smith@urbn.com",
+                "orderTotal": 200
               }
             }
           }
         }
+      }
+    },
+    "/customers/{email}": {
+      "get": {
+        "summary": "Get Customer Details",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "operationId": "Get_Customer_Details",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "john.smith@urbn.com"
+          }
+        ]
       }
     }
   },
