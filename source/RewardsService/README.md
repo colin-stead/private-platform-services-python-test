@@ -58,10 +58,11 @@ I also upgraded `tornado` to `6.5.10` and set debug mode to false in [settings.p
     * I assumed rewardPoints must be >= 0.
     * I assumed ints were acceptable for the orderTotal as well. Floats are accepted as long as the decimal does not exceed the hundreths place.
 * `GET /customers/{customer_email}`
-    * I assumed default sorting should be most recently added customer to oldest customer on `GET /customers/`
     * I'm not a fan of passing an email directly to the URL. In a production setting I'd opt for an ID key.
 * `GET /customers`
+    * I assumed default sorting should be most recently added customer to oldest customer on `GET /customers` so the default sort is descending on the `_id` key.
     * No server side caching. Takes advantage of Tornado's built in etag handling. In a production setting I'd prefer to cache the results of heavily trafficked endpoints like server side with something like Redis.
+    * Assumed filtering and pagination were desired and added it.
 * Authentication
     * Nothing was in the spec on authentication. So I didn't set up any API Keys or User accounts. In a production setting these are things that would be added.
 * [Documentation](#endpoint-documentation)
@@ -298,12 +299,12 @@ curl "http://localhost:7050/rewards"
 ### curl GET /customers
 For the generic /customers endpoint run
 ```
-curl "http://localhost:7050/customers
+curl "http://localhost:7050/customers"
 ```
 
 To filter/paginate pass the params in place of {key} replace the key you want to filer on and in place of value replace the value you want for the filter
 ```
-curl "http://localhost:7050/customers?" \
+curl "http://localhost:7050/customers" \
     --url-query "{key}={value}"
 ```
 Example:
@@ -316,11 +317,11 @@ curl "http://localhost:7050/customers" \
 ### curl GET /customers/{customer_email}
 For the generic /customers endpoint replace the {customer_email} with the email you'd like to search and run
 ```
-curl "http://localhost:7050/customers/{customer_email}
+curl "http://localhost:7050/customers/{customer_email}""
 ```
 Example:
 ```
-curl "http://localhost:7050/customers/colin@urbn.com
+curl "http://localhost:7050/customers/colin@urbn.com"
 ```
 
 ### curl POST /customers
