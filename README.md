@@ -84,8 +84,8 @@ If you have more than one container engine installed (for example Rancher Deskto
     * Response Codes 201, 409, and 422
     * 422 reasons:
         * Invalid email (error_code: 001)
-        * Negative orderTotal (error_code: 002)
-        * Invalid orderTotal (error_code: 003)
+        * Invalid orderTotal (error_code: 002)
+        * Negative orderTotal (error_code: 003)
     * Example 201 Response:
         ```
         {
@@ -131,8 +131,9 @@ If you have more than one container engine installed (for example Rancher Deskto
         * sort: The key to sort on. ACCEPTED VALUES: [`-_id`, `_id`, `-rewardPoints`, `rewardPoints`, `-rewardTier`, `rewardTier`, `-nextRewardTierProgress`, `nextRewardTierProgress`]
         * rewardTier: Char ranging from A - J. Must be uppercase. Anything else will return nothing.
         * rewardPoints: The rewardPoint value. This can also be passed as `rewardPoints[lt]` (for less than a value), `rewardPoints[gt]` (for greater than a value), `rewardPoints[lte]` (for less than or equal to a value), `rewardPoints[gte]` (for greater than or equal to a value) or whatever other comparison you'd like to make between the braces.
-    * Response Codes 200
-    * Example 200 Response (with data in DB):
+    * Uses Tornado's default etag handling and passes an etag in the response header.
+    * Response Codes 200, 304
+    * Example 200 Response Body (with data in DB):
         ```
         {
             "data": [
@@ -163,7 +164,7 @@ If you have more than one container engine installed (for example Rancher Deskto
             }
         }
         ```
-    * Example 200 Response (without data in DB):
+    * Example 200 Response Body (without data in DB):
         ```
         {
             "data": [],
@@ -179,7 +180,8 @@ If you have more than one container engine installed (for example Rancher Deskto
         ```
 * `GET /customers/{customer_email}`
     * Get a customer from the database with their email
-    * Response Codes 200, 404
+    * Uses Tornado's default etag handling and passes an etag in the response header.
+    * Response Codes 200, 304, 404
     * Example 200 Response:
         ```
         {
@@ -233,7 +235,7 @@ If you have more than one container engine installed (for example Rancher Deskto
     ```
     {
         "message": "Invalid monetary value.",
-        "error_code": "003",
+        "error_code": "002",
         "errors": {
             "orderTotal": [
                 "The monetary value is invalid. Round to nearest cent."
@@ -248,7 +250,8 @@ If you have more than one container engine installed (for example Rancher Deskto
 * I assumed rewardPoints must be >= 0.
 * On the "Get Customer Details" endpoint `GET /customers/{customer_email}` I'm not a fan of passing an email directly to the URL. In a production setting I'd opt for an ID key.
 * Nothing was in the spec on authentication. So I didn't set up any API Keys or User accounts. In a production setting these are things that would be added.
-* I opted not to make a UI for this project. I had too much fun with the REST API and opted to improve it instead.
+* No server side caching. Takes advantage of Tornado's built in etag handling. In a production setting I'd prefer to cache the results of heavily trafficked endpoints like `GET /customers` server side with something like Redis.
+* I opted not to make a UI for this project. I had too much fun with the backend REST API and opted to improve it instead.
 
 # Manual Usage of API
 * I included json file called [Urbn-openapi.json](Urbn-openapi.json) in the root directory. You can import this file to [hoppscotch.io](https://hoppscotch.io/) or another REST Client that accepts the JSON file and test for yourself. Otherwise you can curl endpoints as you'd like.
