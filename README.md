@@ -265,7 +265,7 @@ If you have more than one container engine installed (for example Rancher Deskto
         ```
 
 ## Manual Usage of API
-* I included json file called [Urbn-openapi.json](Urbn-openapi.json) in the root directory. You can import this file to [hoppscotch.io](https://hoppscotch.io/) or another REST Client that accepts the JSON file and test for yourself. Otherwise you can curl endpoints as you'd like.
+* I included json file called [Urbn-openapi.json](Urbn-openapi.json) in the root directory. You can import this file to [hoppscotch.io](https://hoppscotch.io/) via Import > "Import from OpenAPI" or another REST Client that accepts the JSON file and test for yourself. Otherwise you can curl endpoints as you'd like.
 
 ### curl GET /rewards
 ```
@@ -288,6 +288,16 @@ Example:
 curl "http://localhost:7050/customers" \
     --url-query "rewardPoints[gt]=400" \
     --url-query "sort=-rewardPoints"
+```
+
+### curl GET /customers/{customer_email}
+For the generic /customers endpoint replace the {customer_email} with the email you'd like to search and run
+```
+curl "http://localhost:7050/customers/{customer_email}
+```
+Example:
+```
+curl "http://localhost:7050/customers/colin@urbn.com
 ```
 
 ### curl POST /customers
