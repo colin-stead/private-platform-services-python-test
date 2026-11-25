@@ -94,7 +94,77 @@ Database settings are environment variables read in `source/RewardsService/datab
 
 If you have more than one container engine installed (for example Rancher Desktop and Docker Desktop), make sure the MongoDB that owns host port `27017` is the one you expect.
 
-# Endpoints
+# Solution
+
+Setup for the [RewardsService](source/RewardsService/README.md) stays the same with the following packages added to [requirements.txt](source/RewardsService/requirements.txt)
+* `validators 0.35.0` for customer email validation without a need for regex. In a real setting this could be used for initial validation but ultimately a confirmation email would need to be sent to the user to validate the email.
+* `pytest 9.2.0` for unit testing.
+* `requests 2.34.2` for hitting endpoints in pytest.
+
+I also upgraded `tornado` to `6.5.10`.
+
+# Assumptions & Tradeoffs
+* `POST /customers`
+    * I assumed we wouldn't want duplicate customers with the same emails. So I added a `409` response and another endpoint to update customer rewards `PUT /customers/{customer_email}`. This follows best practices in API design.
+    * I assumed "No more rewards can be earned" also meant there's a cap to reward points a customer can earn. So for this project, once a customer hits the "J Tier", they can no longer earn more points and are capped at 1000. The POST/PUT endpoints will still return 200 OK responses but the rewards data will not change.
+    * I assumed rewardPoints must be >= 0.
+* `GET /customers/{customer_email}`
+    * I assumed default sorting should be most recently added customer to oldest customer on `GET /customers/`
+    * I'm not a fan of passing an email directly to the URL. In a production setting I'd opt for an ID key.
+* `GET /customers`
+    * No server side caching. Takes advantage of Tornado's built in etag handling. In a production setting I'd prefer to cache the results of heavily trafficked endpoints like server side with something like Redis.
+* Authentication
+    * Nothing was in the spec on authentication. So I didn't set up any API Keys or User accounts. In a production setting these are things that would be added.
+* Documentation
+    * I only included docs in the README files. In a production setting I'd use something like Swagger for documentation. FastAPI supports this out of the box, unsure if there's a good tornado plugin or not.
+* UI
+    * I opted not to make a UI for this project. I had too much fun with the backend REST API and opted to improve it instead.
+
+# Testing
+Tests run with `pytest` on your machine (not inside docker) against a separate **`Tests`** MongoDB database, so the `Rewards` database used by the service on `http://localhost:7050` is never touched. `conftest.py` starts its own copy of the service on **port 7051** that is pointed at the `Tests` database.
+
+### Prerequisites
+* The MongoDB container is running with port `27017` published: `cd source/RewardsService && docker-compose up -d`. The service on port 7050 does not need to be running for the tests.
+* From the root directory (directory just one step above source) run the following commands to create a Python virtual environment with the pinned dependencies (an older tornado raises a `DeprecationWarning` on Python 3.14):
+    * For MacOS
+        ```
+        python -m venv .venv
+        source .venv/bin/activate
+        pip install -r source/RewardsService/requirements.txt
+        ```
+    * For Windows
+        ```
+        python -m venv .venv
+        ./venv/Scripts/Activate.ps1
+        pip install -r source/RewardsService/requirements.txt
+        ```
+* Port `7051` is free.
+
+### Run the tests from inside the virtual environment
+```
+cd source/RewardsService
+pytest
+```
+
+### What the tests do
+* The `rewards` collection in the `Tests` database is reloaded with the same data as `load_mongo_data.py` at the start of each run.
+* The `customers` collection is emptied before and after every test, and dropped when the run finishes, so tests never see data from other tests or earlier runs. The `rewards` collection stays in the `Tests` database.
+
+### Configuration
+Database settings are environment variables read in `source/RewardsService/database.py`:
+
+| Variable | Default | Under pytest |
+| --- | --- | --- |
+| `MONGO_HOST` | `mongodb` (docker compose service name) | `localhost` (override if Mongo is elsewhere) |
+| `MONGO_PORT` | `27017` | `27017` |
+| `DB_NAME` | `Rewards` | `Tests` (always) |
+
+If you have more than one container engine installed (for example Rancher Desktop and Docker Desktop), make sure the MongoDB that owns host port `27017` is the one you expect.
+
+# DB Cleanup
+* When the rewardsservice container stops running the `customers` collection persists. So restarting the container doesn't wipe data. To get a clean slate run `docker-compose down -v` Then run `docker-compose build && docker-compose up -d`
+
+# Endpoint Documentation
 * `POST /customers`
     * Creates a new customer in the Rewards DB under the `customers` collection. 409s if the customer exists
     * Request Body accepts:
@@ -268,19 +338,7 @@ If you have more than one container engine installed (for example Rancher Deskto
         }
         ```
 
-# Assumptions & Tradeoffs
-* On the "Create Customer" endpoint `POST /customers` I assumed we wouldn't want duplicate customers with the same emails. So I added a `409` response and another endpoint to update customer rewards `PUT /customers/{customer_email}`. This follows best practices in API design.
-* I assumed "No more rewards can be earned" also meant there's a cap to reward points a customer can earn. So for this project, once a customer hits the "J Tier", they can no longer earn more points and are capped at 1000. The POST/PUT endpoints will still return 200 OK responses but the rewards data will not change.
-* I assumed rewardPoints must be >= 0.
-* I assumed default sorting should be most recently added customer to oldest customer on `GET /customers/`
-* On `GET /customers/{customer_email}` I'm not a fan of passing an email directly to the URL. In a production setting I'd opt for an ID key.
-* When the rewardsservice container stops running the `customers` collection persists. So restarting the container doesn't wipe data. To get a clean slate run `docker-compose down -v` Then run `docker-compose build && docker-compose up -d`
-* Nothing was in the spec on authentication. So I didn't set up any API Keys or User accounts. In a production setting these are things that would be added.
-* No server side caching. Takes advantage of Tornado's built in etag handling. In a production setting I'd prefer to cache the results of heavily trafficked endpoints like `GET /customers` server side with something like Redis.
-* I only included docs in the README files. In a production setting I'd use something like Swagger for documentation. FastAPI supports this out of the box, unsure if there's a good tornado plugin or not.
-* I opted not to make a UI for this project. I had too much fun with the backend REST API and opted to improve it instead.
-
-# Manual Usage of API
+## Manual Usage of API
 * I included json file called [Urbn-openapi.json](Urbn-openapi.json) in the root directory. You can import this file to [hoppscotch.io](https://hoppscotch.io/) or another REST Client that accepts the JSON file and test for yourself. Otherwise you can curl endpoints as you'd like.
 
 ### curl GET /rewards
