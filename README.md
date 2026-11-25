@@ -34,6 +34,7 @@ I also upgraded `tornado` to `6.5.10` and set debug mode to false in [settings.p
     * I assumed we wouldn't want duplicate customers with the same emails. So I added a `409` response and another endpoint to update customer rewards `PUT /customers/{customer_email}`. This follows best practices in API design.
     * I assumed "No more rewards can be earned" also meant there's a cap to reward points a customer can earn. So for this project, once a customer hits the "J Tier", they can no longer earn more points and are capped at 1000. The POST/PUT endpoints will still return 200 OK responses but the rewards data will not change.
     * I assumed rewardPoints must be >= 0.
+    * I assumed ints were acceptable for the orderTotal as well. Floats are accepted as long as the decimal does not exceed the hundreths place.
 * `GET /customers/{customer_email}`
     * I assumed default sorting should be most recently added customer to oldest customer on `GET /customers/`
     * I'm not a fan of passing an email directly to the URL. In a production setting I'd opt for an ID key.
